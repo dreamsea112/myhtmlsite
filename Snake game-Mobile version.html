@@ -64,6 +64,7 @@
     <button onclick="startGame()">開始</button>
     <button onclick="pauseGame()">暫停</button>
     <button onclick="toggleMusic()">🎵音樂</button>
+    <button onclick="toggleFullscreen()">🔳 全螢幕</button>
   </div>
 
   <div id="touch-controls">
@@ -104,7 +105,7 @@
     function startGame() {
       clearInterval(game);
       game = setInterval(draw, 120);
-      if (bgMusic.paused) bgMusic.play();
+      bgMusic.play().catch(() => {}); // 嘗試播放音樂（防止報錯）
     }
 
     function pauseGame() {
@@ -115,6 +116,16 @@
     function toggleMusic() {
       if (bgMusic.paused) bgMusic.play();
       else bgMusic.pause();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          alert(`無法切換全螢幕: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
     }
 
     function draw() {
@@ -155,7 +166,6 @@
         snake.unshift(head);
       }
 
-      // 碰撞檢查
       if (
         head.x < 0 || head.x >= canvas.width ||
         head.y < 0 || head.y >= canvas.height ||
@@ -209,6 +219,14 @@
         else if (deltaY < -30) changeDirection('up');
       }
     });
+
+    // ⚠️ 手機使用者互動後自動嘗試進入全螢幕
+    document.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    }, { once: true });
+
   </script>
 </body>
 </html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>貪食蛇遊戲（手機支援版）</title>
+    <style>
+        body {
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        canvas {
+            background-color: #222;
+            border: 2px solid #fff;
+            margin: 20px 0;
+            touch-action: none; /* 防止雙指縮放與滑動畫布 */
+        }
+
+        p {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>貪食蛇遊戲</h1>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <p>在電腦用鍵盤方向鍵移動，在手機用滑動方向控制</p>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const box = 20;
+        const canvasSize = 400;
+        const rows = canvasSize / box;
+        const columns = canvasSize / box;
+
+        let snake = [{ x: 9 * box, y: 9 * box }];
+        let direction = "RIGHT";
+        let food = {
+            x: Math.floor(Math.random() * columns) * box,
+            y: Math.floor(Math.random() * rows) * box
+        };
+        let score = 0;
+        let game;
+
+        document.addEventListener("keydown", changeDirection);
+
+        function changeDirection(event) {
+            if (event.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
+            else if (event.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
+            else if (event.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
+            else if (event.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+            for (let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = i === 0 ? "lime" : "white";
+                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+            }
+
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x, food.y, box, box);
+
+            let headX = snake[0].x;
+            let headY = snake[0].y;
+
+            if (direction === "LEFT") headX -= box;
+            if (direction === "UP") headY -= box;
+            if (direction === "RIGHT") headX += box;
+            if (direction === "DOWN") headY += box;
+
+            if (headX === food.x && headY === food.y) {
+                score++;
+                food = {
+                    x: Math.floor(Math.random() * columns) * box,
+                    y: Math.floor(Math.random() * rows) * box
+                };
+            } else {
+                snake.pop();
+            }
+
+            const newHead = { x: headX, y: headY };
+
+            if (
+                headX < 0 || headX >= canvasSize ||
+                headY < 0 || headY >= canvasSize ||
+                collision(newHead, snake)
+            ) {
+                clearInterval(game);
+                alert("遊戲結束！你的得分：" + score);
+                location.reload(); // 重新整理頁面重新開始
+            }
+
+            snake.unshift(newHead);
+        }
+
+        function collision(head, array) {
+            return array.some(segment => segment.x === head.x && segment.y === head.y);
+        }
+
+        game = setInterval(draw, 150);
+
+        // 手機觸控支援
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener("touchstart", function(e) {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        }, { passive: true });
+
+        canvas.addEventListener("touchend", function(e) {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 30 && direction !== "LEFT") direction = "RIGHT";
+                else if (dx < -30 && direction !== "RIGHT") direction = "LEFT";
+            } else {
+                if (dy > 30 && direction !== "UP") direction = "DOWN";
+                else if (dy < -30 && direction !== "DOWN") direction = "UP";
+            }
+        }, { passive: true });
+    </script>
+</body>
+</html>

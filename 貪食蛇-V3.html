@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>貪食蛇遊戲</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            justify-content: center;
+            color: #333;
+        }
+        .container {
+            position: relative;
+            text-align: center;
+            background-color: #f0f8ff;
+        }
+        .scoreboard {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .scoreboard .score, .scoreboard .high-score, .scoreboard .difficulty {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007BFF;
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+            background-color: #fff;
+            border-radius: 10px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #007BFF;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="scoreboard">
+            <div class="score">分數: <span id="score">0</span></div>
+            <div class="difficulty">速度: <span id="speedLevel">1</span></div>
+            <div class="high-score">最高分: <span id="highScore">0</span></div>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <div class="buttons">
+        <button id="startBtn">開始遊戲 (空白鍵)</button>
+        <button id="pauseBtn" disabled>暫停遊戲 (Enter鍵)</button>
+    </div>
+
+    <div class="footer">
+       By: 慶宗
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const box = 20;
+        let snake = [{ x: 10 * box, y: 10 * box }];
+        let direction = 'RIGHT';
+        let food = {
+            x: Math.floor(Math.random() * 19 + 1) * box,
+            y: Math.floor(Math.random() * 19 + 1) * box
+        };
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        document.getElementById('highScore').innerText = highScore;
+        let gameSpeed = 200; // 初始速度
+        let speedLevel = 1;
+        let gameInterval = null;
+        let paused = false;
+        let lastFoodTime = null;
+        let scoreIncrement = 8;
+        let consecutiveEats = 0;
+        let foodCount = 0; // 初始化食物計數器
+        let currentSpeed = 1; // 初始化當前速度
+
+        // 自動提升速度並更新顯示
+        function checkFoodCountAndIncreaseSpeed() {
+            foodCount++;
+            if (foodCount >= 30) {
+                foodCount = 0; // 重置食物計數
+                if (currentSpeed < 9) {
+                    currentSpeed++; // 提升速度難度
+                    setSpeed(currentSpeed); // 設置新的速度
+                }
+            }
+        }
+
+        function eatFood() {
+            // 當蛇吃到食物，調用此函數
+            checkFoodCountAndIncreaseSpeed(); // 檢查是否提升速度
+            // 更新顯示
+            document.getElementById('speedLevel').innerText = currentSpeed; 
+        }
+
+        // 設置速度
+        function setSpeed(newSpeed) {
+            currentSpeed = newSpeed;
+            gameSpeed = 200 - (newSpeed * 15); // 更新速度
+            if (gameSpeed < 50) gameSpeed = 50; // 最快速度限制
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, gameSpeed); // 更新遊戲循環速度
+        }
+
+        function drawSnake() {
+            for (let i = 0; i < snake.length; i++) {
+                if (i === 0) {
+                    ctx.fillStyle = '#FF6347'; // 蛇頭顏色
+                } else {
+                    ctx.fillStyle = '#32CD32'; // 蛇身顏色
+                }
+                ctx.strokeStyle = '#006400';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(snake[i].x + box / 2, snake[i].y + box / 2, box / 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
+        function drawFood() {
+            ctx.fillStyle = '#FFD700'; // 食物顏色
+            ctx.strokeStyle = '#FFA500';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(food.x + box / 2, food.y + box / 2, box / 2, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function updateScore() {
+            document.getElementById('score').innerText = score;
+            document.getElementById('highScore').innerText = highScore;
+        }
+
+        function moveSnake() {
+            const head = { ...snake[0] };
+            if (direction === 'LEFT') head.x -= box;
+            if (direction === 'UP') head.y -= box;
+            if (direction === 'RIGHT') head.x += box;
+            if (direction === 'DOWN') head.y += box;
+
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || collision(head, snake)) {
+                clearInterval(gameInterval);
+                gameInterval = null;
+                alert('遊戲結束');
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('highScore', highScore);
+                }
+                resetGame();
+                return;
+            }
+
+            if (head.x === food.x && head.y === food.y) {
+                score += scoreIncrement;
+                const currentTime = new Date().getTime();
+                if (lastFoodTime && (currentTime - lastFoodTime) <= 5000) { // 5秒內連續吃到
+                    consecutiveEats++;
+                    scoreIncrement += 2;
+                } else {
+                    consecutiveEats = 1;
+                    scoreIncrement = 8;
+                }
+                lastFoodTime = currentTime;
+                food = {
+                    x: Math.floor(Math.random() * 19 + 1) * box,
+                    y: Math.floor(Math.random() * 19 + 1) * box
+                };
+                eatFood(); // 呼叫吃食物的函數
+            } else {
+                snake.pop();
+            }
+
+            snake.unshift(head);
+            updateScore();
+        }
+
+        function collision(head, array) {
+            for (let i = 0; i < array.length; i++) {
+                if (head.x === array[i].x && head.y === array[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawFood();
+            moveSnake();
+            drawSnake();
+        }
+
+        function startGame() {
+            if (!gameInterval) {
+                gameInterval = setInterval(gameLoop, gameSpeed);
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                paused = false;
+            }
+        }
+
+        function pauseGame() {
+            if (gameInterval) {
+                clearInterval(gameInterval);
+                gameInterval = null;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                paused = true;
+            }
+        }
+        function adjustSpeed(level) {
+            clearInterval(gameInterval);
+            speedLevel = level;
+            document.getElementById('speedLevel').innerText = speedLevel;
+            gameSpeed = 200 - (level * 15); // 計算速度，範圍大約在35-200
+            if (gameSpeed < 50) gameSpeed = 50; // 最快速度限制
+            if (!paused) {
+                gameInterval = setInterval(gameLoop, gameSpeed);
+            }
+        }
+        function resetGame() {
+            snake = [{ x: 10 * box, y: 10 * box }];
+            direction = 'RIGHT';
+            food = {
+                x: Math.floor(Math.random() * 19 + 1) * box,
+                y: Math.floor(Math.random() * 19 + 1) * box
+            };
+            score = 0;
+            scoreIncrement = 8;
+            consecutiveEats = 0;
+            foodCount = 0;
+            currentSpeed = 1;
+            document.getElementById('speedLevel').innerText = currentSpeed; // 重置顯示
+            gameSpeed = 200;
+            paused = false;
+            updateScore();
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === ' ' && !gameInterval) { // 空白鍵開始
+                event.preventDefault();
+                startGame();
+            }
+            if (event.key === 'Enter') { // Enter鍵暫停
+                pauseGame();
+            }
+            if (event.key === 'ArrowLeft' && direction !== 'RIGHT') {
+                direction = 'LEFT';
+            }
+            if (event.key === 'ArrowUp' && direction !== 'DOWN') {
+                direction = 'UP';
+            }
+            if (event.key === 'ArrowRight' && direction !== 'LEFT') {
+                direction = 'RIGHT';
+            }
+            if (event.key === 'ArrowDown' && direction !== 'UP') {
+                direction = 'DOWN';
+            }
+            // 數字鍵1~9調整速度
+            if (/^[1-9]$/.test(event.key)) {
+                adjustSpeed(parseInt(event.key));
+            }
+            // 數字小鍵盤1~9調整速度
+            if (/^Numpad[1-9]$/.test(event.code)) {
+                adjustSpeed(parseInt(event.code.replace('Numpad', '')));
+            }
+        });
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+    </script>
+</body>
+</html>

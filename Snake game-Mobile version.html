@@ -59,14 +59,7 @@
   <div class="scoreboard">
     分數: <span id="score">0</span>　|　歷史最高分: <span id="highScore">0</span>
   </div>
-
-  <div id="buttons">
-    <button onclick="startGame()">開始</button>
-    <button onclick="pauseGame()">暫停</button>
-    <button onclick="toggleMusic()">🎵音樂</button>
-    <button onclick="toggleFullscreen()">🔳 全螢幕</button>
-  </div>
-
+  
   <div id="touch-controls">
     <div class="touch-row">
       <button onclick="changeDirection('up')">⬆️</button>
@@ -77,6 +70,14 @@
       <button onclick="changeDirection('right')">➡️</button>
     </div>
   </div>
+  
+  <div id="buttons">
+    <button onclick="startGame()">開始</button>
+    <button onclick="pauseGame()">暫停</button>
+    <button onclick="toggleMusic()">🎵音樂</button>
+    <button onclick="toggleFullscreen()">🔳 全螢幕</button>
+  </div>
+
 
   <audio id="eatSound" src="https://freesound.org/data/previews/341/341695_3248244-lq.mp3"></audio>
   <audio id="bgMusic" src="https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Komiku/Komiku_-_Its_time_for_adventure/Komiku_-_05_-_Level_Up.mp3" loop></audio>

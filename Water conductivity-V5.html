@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水質導電度(比電阻)轉換</title>
+    <style>
+        body {
+            background-color: #f0f0f0;
+            color: #333;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #007BFF;
+        }
+        input, select {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #007BFF;
+            border-radius: 5px;
+            background-color: #fff;
+            color: #333;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result, .history {
+            margin-top: 20px;
+            padding: 20px;
+            border-top: 1px solid #ccc;
+            background-color: #fafafa;
+            border-radius: 5px;
+        }
+        .line-divider {
+            border-top: 1px solid #007BFF;
+            margin: 20px 0;
+        }
+        .history ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .history li {
+            background-color: #e9f5ff;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        .decoration {
+            font-size: 50px;
+            color: #007BFF;
+            margin-bottom: 20px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #666;
+        }
+        .footer p {
+            color: #007BFF;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="decoration">💧</div>
+        <h1>水質導電度(比電阻)轉換</h1>
+        
+        <input type="number" id="inputValue" placeholder="輸入導電度值">
+        
+        <select id="unitSelector">
+            <option value="MΩ/cm">MΩ/cm</option>
+            <option value="ms/cm">毫西門子每釐米 (ms/cm)</option>
+            <option value="μS/cm">微西門子每釐米 (μS/cm)</option>
+            <option value="S/m">西門子每米 (S/m)</option>
+            <option value="mho/m">姆歐每米 (mho/m)</option>
+            <option value="Hanna ppm">Hanna PPM (美國)</option>
+            <option value="Eutech ppm">Eutech PPM (歐洲)</option>
+            <option value="CF">CF</option>
+
+        </select>
+        
+        <button onclick="convert()">轉換</button>
+
+        <div class="line-divider"></div>
+
+        <div class="result" id="resultContainer">
+            <h2>轉換結果</h2>
+            <p id="resultMΩCm"></p>
+            <p id="resultMsCm"></p>
+            <p id="resultUsCm"></p>
+            <p id="resultSm"></p>
+            <p id="resultMhoM"></p>
+            <p id="resultHannaPpm"></p>
+            <p id="resultEutechPpm"></p>
+            <p id="resultCF"></p>
+
+        </div>
+
+        <div class="history" id="historyContainer">
+            <h2>轉換記錄</h2>
+            <ul id="historyList"></ul>
+        </div>
+        <div class="footer">
+            <p>by:廠務6部 慶宗</p>
+        </div>
+    </div>
+
+    <script>
+        let history = [];
+
+        // 新增格式化數字函數，去除不必要的0
+        function formatNumber(num) {
+            if (num === 0) return "0";
+            return parseFloat(num.toFixed(8)).toString();
+        }
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        convert();
+    }
+});
+
+        function convert() {
+            const inputValue = parseFloat(document.getElementById('inputValue').value);
+            
+            if (isNaN(inputValue) || inputValue <= 0) {
+                alert("請輸入有效的數值");
+                return;
+            }
+
+            const unit = document.getElementById('unitSelector').value;
+
+            let usCm;
+
+            switch (unit) {
+                case 'MΩ/cm':
+                    usCm = 0.055 / (inputValue / 18.2); // 公式: 0.055 μS/cm = 18.2 MΩ/cm
+                    break;
+                case 'ms/cm':
+                    usCm = inputValue * 1000; // 毫西門子到微西門子的換算
+                    break;
+                case 'μS/cm':
+                    usCm = inputValue;
+                    break;
+                case 'S/m':
+                    usCm = inputValue * 10000; // 西門子到微西門子的換算
+                    break;
+                case 'mho/m':
+                    usCm = inputValue * 10000; // 姆歐每米到微西門子的換算
+                    break;
+                case 'Hanna ppm':
+                    usCm = inputValue * 2; // Hanna PPM 到微西門子的換算 (1 PPM = 2 μS/cm)
+                    break;
+                case 'Eutech ppm':
+                    usCm = inputValue * 1.5625; // Eutech PPM 到微西門子的換算 (1 PPM = 1.5625 μS/cm)
+                    break;
+                case 'CF':
+                    usCm = inputValue * 100; // CF 到微西門子的換算 (1 CF = 100 μS/cm)
+                    break;
+                default:
+                    alert("無法辨識單位");
+                    return;
+            }
+
+            const mohmCm = 18.2 / (usCm / 0.055);
+            const msCm = usCm / 1000;
+            const sm = usCm / 10000; // 1 S/m = 10000 μS/cm
+            const mhoM = usCm / 10000; // 1 mho/m = 10000 μS/cm
+            const hannaPpm = usCm / 2;
+            const eutechPpm = usCm / 1.5625;
+            const cf = usCm / 100;
+
+            // 將結果顯示並格式化，去除不必要的0
+            document.getElementById('resultMΩCm').innerHTML = `MΩ/cm: ${formatNumber(mohmCm)}`;
+            document.getElementById('resultMsCm').innerHTML = `毫西門子每釐米 (ms/cm): ${formatNumber(msCm)}`;
+            document.getElementById('resultUsCm').innerHTML = `微西門子每釐米 (μS/cm): ${formatNumber(usCm)}`;
+            document.getElementById('resultSm').innerHTML = `西門子每米 (S/m): ${formatNumber(sm)}`;
+            document.getElementById('resultMhoM').innerHTML = `姆歐每米 (mho/m): ${formatNumber(mhoM)}`;
+            document.getElementById('resultHannaPpm').innerHTML = `Hanna PPM (美國): ${formatNumber(hannaPpm)}`;
+            document.getElementById('resultEutechPpm').innerHTML = `Eutech PPM (歐洲): ${formatNumber(eutechPpm)}`;
+            document.getElementById('resultCF').innerHTML = `CF: ${formatNumber(cf)}`;
+
+            const result = {
+                input: inputValue,
+                unit: unit,
+                mohmCm: formatNumber(mohmCm),
+                usCm: formatNumber(usCm),
+                msCm: formatNumber(msCm),
+                sm: formatNumber(sm),
+                mhoM: formatNumber(mhoM),
+                hannaPpm: formatNumber(hannaPpm),
+                eutechPpm: formatNumber(eutechPpm),
+                cf: formatNumber(cf),
+            };
+
+            // 將轉換結果添加到歷史記錄
+            history.push(result);
+            updateHistory();
+        }
+
+        function updateHistory() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            history.forEach((item, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `第 ${index + 1} 次轉換: 輸入 ${item.input} ${item.unit}, MΩ/cm: ${item.mohmCm}, 微西門子每釐米 (μS/cm): ${item.usCm}, 毫西門子每釐米 (ms/cm): ${item.msCm}, 西門子每米 (S/m): ${item.sm}, 姆歐每米 (mho/m): ${item.mhoM}, Hanna PPM (美國): ${item.hannaPpm}, Eutech PPM (歐洲): ${item.eutechPpm}, CF: ${item.cf}`;
+                historyList.appendChild(listItem);
+            });
+        }
+    </script>
+
+</body>
+</html>

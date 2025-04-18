@@ -2,143 +2,155 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>≥g≠π≥DπC¿∏°]§‚æ˜§‰¥©™©°^</title>
+    <title>Ë≤™È£üËõáÈÅäÊà≤</title>
     <style>
         body {
-            background-color: #111;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            margin: 0;
-            padding: 20px;
             font-family: Arial, sans-serif;
-            color: #fff;
         }
-
-        h1 {
-            margin-bottom: 10px;
-        }
-
         canvas {
-            background-color: #222;
-            border: 2px solid #fff;
-            margin: 20px 0;
-            touch-action: none; /* ®æ§Ó¬˘´¸¡Y©ÒªP∑∆∞ µe•¨ */
+            border: 1px solid #000;
+            margin-top: 20px;
         }
-
-        p {
-            font-size: 16px;
+        .buttons {
+            margin-top: 10px;
+        }
+        .touch-controls {
+            margin-top: 20px;
+            user-select: none;
+        }
+        .touch-controls button {
+            width: 60px;
+            height: 60px;
+            font-size: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>≥g≠π≥DπC¿∏</h1>
+    <h1>Ë≤™È£üËõáÈÅäÊà≤</h1>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
-    <p>¶bπq∏£•Œ¡‰ΩL§Ë¶V¡‰≤æ∞ °A¶b§‚æ˜•Œ∑∆∞ §Ë¶V±±®Ó</p>
+
+    <!-- Ëß∏ÊéßÊñπÂêëÊåâÈàï -->
+    <div class="touch-controls">
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <button onclick="if(direction !== 'DOWN') direction='UP'">‚Üë</button>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <button onclick="if(direction !== 'RIGHT') direction='LEFT'">‚Üê</button>
+            <div style="width: 20px;"></div>
+            <button onclick="if(direction !== 'LEFT') direction='RIGHT'">‚Üí</button>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <button onclick="if(direction !== 'UP') direction='DOWN'">‚Üì</button>
+        </div>
+    </div>
+
+    <div class="buttons">
+        <button id="startBtn">ÈñãÂßãÈÅäÊà≤ (Á©∫ÁôΩÈçµ)</button>
+        <button id="pauseBtn" disabled>Êö´ÂÅúÈÅäÊà≤ (EnterÈçµ)</button>
+    </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        const startBtn = document.getElementById("startBtn");
+        const pauseBtn = document.getElementById("pauseBtn");
+
         const box = 20;
         const canvasSize = 400;
-        const rows = canvasSize / box;
-        const columns = canvasSize / box;
-
-        let snake = [{ x: 9 * box, y: 9 * box }];
+        let snake = [{x: 160, y: 200}];
         let direction = "RIGHT";
-        let food = {
-            x: Math.floor(Math.random() * columns) * box,
-            y: Math.floor(Math.random() * rows) * box
-        };
+        let food = spawnFood();
         let score = 0;
         let game;
 
         document.addEventListener("keydown", changeDirection);
 
+        startBtn.addEventListener("click", () => {
+            clearInterval(game);
+            game = setInterval(draw, 100);
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+        });
+
+        pauseBtn.addEventListener("click", () => {
+            clearInterval(game);
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+        });
+
         function changeDirection(event) {
-            if (event.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
-            else if (event.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
-            else if (event.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
-            else if (event.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
+            if (event.keyCode === 37 && direction !== "RIGHT") direction = "LEFT";
+            else if (event.keyCode === 38 && direction !== "DOWN") direction = "UP";
+            else if (event.keyCode === 39 && direction !== "LEFT") direction = "RIGHT";
+            else if (event.keyCode === 40 && direction !== "UP") direction = "DOWN";
+        }
+
+        function spawnFood() {
+            return {
+                x: Math.floor(Math.random() * (canvasSize / box)) * box,
+                y: Math.floor(Math.random() * (canvasSize / box)) * box
+            };
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvasSize, canvasSize);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             for (let i = 0; i < snake.length; i++) {
-                ctx.fillStyle = i === 0 ? "lime" : "white";
+                ctx.fillStyle = i === 0 ? "green" : "white";
                 ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.strokeStyle = "black";
+                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
             }
 
             ctx.fillStyle = "red";
             ctx.fillRect(food.x, food.y, box, box);
 
-            let headX = snake[0].x;
-            let headY = snake[0].y;
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
 
-            if (direction === "LEFT") headX -= box;
-            if (direction === "UP") headY -= box;
-            if (direction === "RIGHT") headX += box;
-            if (direction === "DOWN") headY += box;
+            if (direction === "LEFT") snakeX -= box;
+            if (direction === "UP") snakeY -= box;
+            if (direction === "RIGHT") snakeX += box;
+            if (direction === "DOWN") snakeY += box;
 
-            if (headX === food.x && headY === food.y) {
+            if (snakeX === food.x && snakeY === food.y) {
                 score++;
-                food = {
-                    x: Math.floor(Math.random() * columns) * box,
-                    y: Math.floor(Math.random() * rows) * box
-                };
+                food = spawnFood();
             } else {
                 snake.pop();
             }
 
-            const newHead = { x: headX, y: headY };
+            let newHead = {x: snakeX, y: snakeY};
 
             if (
-                headX < 0 || headX >= canvasSize ||
-                headY < 0 || headY >= canvasSize ||
+                snakeX < 0 || snakeY < 0 ||
+                snakeX >= canvasSize || snakeY >= canvasSize ||
                 collision(newHead, snake)
             ) {
                 clearInterval(game);
-                alert("πC¿∏µ≤ßÙ°IßA™∫±o§¿°G" + score);
-                location.reload(); // ≠´∑sæ„≤z≠∂≠±≠´∑s∂}©l
+                alert("ÈÅäÊà≤ÁµêÊùüÔºÅ");
+                location.reload();
             }
 
             snake.unshift(newHead);
         }
 
         function collision(head, array) {
-            return array.some(segment => segment.x === head.x && segment.y === head.y);
+            for (let i = 0; i < array.length; i++) {
+                if (head.x === array[i].x && head.y === array[i].y) {
+                    return true;
+                }
+            }
+            return false;
         }
 
-        game = setInterval(draw, 150);
-
-        // §‚æ˜ƒ≤±±§‰¥©
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        canvas.addEventListener("touchstart", function(e) {
-            const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-        }, { passive: true });
-
-        canvas.addEventListener("touchend", function(e) {
-            const touchEndX = e.changedTouches[0].clientX;
-            const touchEndY = e.changedTouches[0].clientY;
-
-            const dx = touchEndX - touchStartX;
-            const dy = touchEndY - touchStartY;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 30 && direction !== "LEFT") direction = "RIGHT";
-                else if (dx < -30 && direction !== "RIGHT") direction = "LEFT";
-            } else {
-                if (dy > 30 && direction !== "UP") direction = "DOWN";
-                else if (dy < -30 && direction !== "DOWN") direction = "UP";
-            }
-        }, { passive: true });
+        document.addEventListener("keydown", function(e) {
+            if (e.code === "Space") startBtn.click();
+            else if (e.code === "Enter") pauseBtn.click();
+        });
     </script>
 </body>
 </html>

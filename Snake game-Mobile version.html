@@ -1,232 +1,214 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>貪食蛇遊戲</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>貪食蛇 Snake Game</title>
   <style>
     body {
-      background-color: #1e1e1e;
-      color: #fff;
-      font-family: Arial, sans-serif;
+      font-family: 'Arial', sans-serif;
       text-align: center;
+      background: linear-gradient(to bottom right, #cceeff, #99ccff);
       margin: 0;
       padding: 0;
     }
-
-    #gameCanvas {
-      background-color: #222;
-      display: block;
-      margin: 20px auto;
-      border: 2px solid #555;
+    h1 {
+      margin-top: 20px;
+      color: #003366;
     }
-
-    #score {
-      font-size: 1.5rem;
-      margin-top: 10px;
-      color: #0f0;
+    canvas {
+      background-color: #ffffff;
+      border: 4px solid #3399ff;
+      margin-top: 20px;
     }
-
-    #touchControls {
+    #buttons, #touch-controls {
+      margin: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin: 10px;
+      border-radius: 10px;
+      border: none;
+      background-color: #3399ff;
+      color: white;
+    }
+    #touch-controls {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-top: 20px;
+      gap: 15px;
     }
-
-    .control-row {
+    .touch-row {
       display: flex;
       justify-content: center;
-      margin: 5px;
+      gap: 40px;
     }
-
-    .control-button {
-      width: 70px;
-      height: 70px;
-      margin: 10px;
-      font-size: 2rem;
-      border-radius: 12px;
-      border: none;
-      background-color: #444;
-      color: white;
-      box-shadow: 0 4px #666;
-    }
-
-    .control-button:active {
-      background-color: #666;
-      box-shadow: 0 2px #333;
-      transform: translateY(2px);
+    .scoreboard {
+      margin-top: 10px;
+      font-size: 20px;
+      color: #003366;
     }
   </style>
 </head>
 <body>
-  <h1>🐍 貪食蛇遊戲 🐍</h1>
-  <canvas id="gameCanvas" width="400" height="400"></canvas>
-  <div id="score">得分：0</div>
+  <h1>貪食蛇 Snake Game</h1>
 
-  <!-- 方向按鈕 -->
-  <div id="touchControls">
-    <div class="control-row">
-      <button class="control-button" onclick="changeDirection('up')">⬆️</button>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+  <div class="scoreboard">
+    分數: <span id="score">0</span>　|　歷史最高分: <span id="highScore">0</span>
+  </div>
+
+  <div id="buttons">
+    <button onclick="startGame()">開始</button>
+    <button onclick="pauseGame()">暫停</button>
+    <button onclick="toggleMusic()">🎵音樂</button>
+  </div>
+
+  <div id="touch-controls">
+    <div class="touch-row">
+      <button onclick="changeDirection('up')">⬆️</button>
     </div>
-    <div class="control-row">
-      <button class="control-button" onclick="changeDirection('left')">⬅️</button>
-      <button class="control-button" onclick="changeDirection('down')">⬇️</button>
-      <button class="control-button" onclick="changeDirection('right')">➡️</button>
+    <div class="touch-row">
+      <button onclick="changeDirection('left')">⬅️</button>
+      <button onclick="changeDirection('down')">⬇️</button>
+      <button onclick="changeDirection('right')">➡️</button>
     </div>
   </div>
-    <div class="footer">
-       By: 慶宗
-    </div>
-    
-  <!-- 音效資源 -->
-  <audio id="eatSound" src="https://freesound.org/data/previews/341/341695_626234-lq.mp3" preload="auto"></audio>
-  <audio id="bgMusic" src="https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Scott_Holmes/Happy_Music/Scott_Holmes_-_Upbeat_Party.mp3" preload="auto" loop></audio>
+
+  <audio id="eatSound" src="https://freesound.org/data/previews/341/341695_3248244-lq.mp3"></audio>
+  <audio id="bgMusic" src="https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Komiku/Komiku_-_Its_time_for_adventure/Komiku_-_05_-_Level_Up.mp3" loop></audio>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const box = 20;
+    let snake = [{x: 200, y: 200}];
+    let food = {x: 100, y: 100};
+    let dx = box;
+    let dy = 0;
     let score = 0;
+    let highScore = localStorage.getItem('highScore') || 0;
+    let game;
+    let isPaused = false;
+
+    const scoreDisplay = document.getElementById('score');
+    const highScoreDisplay = document.getElementById('highScore');
+    scoreDisplay.textContent = score;
+    highScoreDisplay.textContent = highScore;
 
     const eatSound = document.getElementById('eatSound');
     const bgMusic = document.getElementById('bgMusic');
-    bgMusic.volume = 0.3;
-    bgMusic.play();
 
-    let snake = [{ x: 200, y: 200 }];
-    let food = spawnFood();
-    let direction = 'right';
-    let changingDirection = false;
+    function startGame() {
+      clearInterval(game);
+      game = setInterval(draw, 120);
+      if (bgMusic.paused) bgMusic.play();
+    }
 
-    document.addEventListener('keydown', handleKey);
-    canvas.addEventListener('touchstart', handleTouchStart, false);
-    canvas.addEventListener('touchmove', handleTouchMove, false);
+    function pauseGame() {
+      clearInterval(game);
+      bgMusic.pause();
+    }
 
-    function spawnFood() {
-      return {
-        x: Math.floor(Math.random() * canvas.width / box) * box,
-        y: Math.floor(Math.random() * canvas.height / box) * box
-      };
+    function toggleMusic() {
+      if (bgMusic.paused) bgMusic.play();
+      else bgMusic.pause();
     }
 
     function draw() {
-      ctx.fillStyle = '#222';
+      if (isPaused) return;
+
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = '#0f0';
-      snake.forEach(part => ctx.fillRect(part.x, part.y, box, box));
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "#0066cc" : "#3399ff";
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+        ctx.strokeStyle = "#ffffff";
+        ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+      }
 
-      ctx.fillStyle = 'red';
+      ctx.fillStyle = "#ff3333";
       ctx.fillRect(food.x, food.y, box, box);
 
-      moveSnake();
-      changingDirection = false;
-    }
-
-    function moveSnake() {
-      const head = { ...snake[0] };
-
-      switch (direction) {
-        case 'up': head.y -= box; break;
-        case 'down': head.y += box; break;
-        case 'left': head.x -= box; break;
-        case 'right': head.x += box; break;
-      }
+      let head = {x: snake[0].x + dx, y: snake[0].y + dy};
 
       if (head.x === food.x && head.y === food.y) {
         snake.unshift(head);
-        food = spawnFood();
         score++;
-        document.getElementById('score').textContent = `得分：${score}`;
+        scoreDisplay.textContent = score;
         eatSound.play();
         if (navigator.vibrate) navigator.vibrate(100);
+        food = {
+          x: Math.floor(Math.random() * (canvas.width / box)) * box,
+          y: Math.floor(Math.random() * (canvas.height / box)) * box
+        };
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('highScore', highScore);
+          highScoreDisplay.textContent = highScore;
+        }
       } else {
         snake.pop();
         snake.unshift(head);
       }
 
-      if (checkCollision(head)) {
-        alert('遊戲結束！得分：' + score);
-        location.reload();
-      }
-    }
-
-    function checkCollision(head) {
+      // 碰撞檢查
       if (
         head.x < 0 || head.x >= canvas.width ||
-        head.y < 0 || head.y >= canvas.height
-      ) return true;
-
-      for (let i = 1; i < snake.length; i++) {
-        if (head.x === snake[i].x && head.y === snake[i].y) return true;
+        head.y < 0 || head.y >= canvas.height ||
+        snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)
+      ) {
+        pauseGame();
+        alert("遊戲結束！");
+        snake = [{x: 200, y: 200}];
+        dx = box;
+        dy = 0;
+        score = 0;
+        scoreDisplay.textContent = score;
       }
-
-      return false;
     }
 
-    function handleKey(e) {
-      if (changingDirection) return;
-      changingDirection = true;
+    function changeDirection(direction) {
+      switch (direction) {
+        case 'left': if (dx === 0) { dx = -box; dy = 0; } break;
+        case 'up': if (dy === 0) { dx = 0; dy = -box; } break;
+        case 'right': if (dx === 0) { dx = box; dy = 0; } break;
+        case 'down': if (dy === 0) { dx = 0; dy = box; } break;
+      }
+    }
 
+    document.addEventListener('keydown', e => {
       switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-          if (direction !== 'down') direction = 'up';
-          break;
-        case 'ArrowDown':
-        case 's':
-          if (direction !== 'up') direction = 'down';
-          break;
-        case 'ArrowLeft':
-        case 'a':
-          if (direction !== 'right') direction = 'left';
-          break;
-        case 'ArrowRight':
-        case 'd':
-          if (direction !== 'left') direction = 'right';
-          break;
+        case 'ArrowLeft': changeDirection('left'); break;
+        case 'ArrowUp': changeDirection('up'); break;
+        case 'ArrowRight': changeDirection('right'); break;
+        case 'ArrowDown': changeDirection('down'); break;
       }
-    }
+    });
 
-    function changeDirection(dir) {
-      if (changingDirection) return;
-      changingDirection = true;
-
-      if (dir === 'up' && direction !== 'down') direction = 'up';
-      if (dir === 'down' && direction !== 'up') direction = 'down';
-      if (dir === 'left' && direction !== 'right') direction = 'left';
-      if (dir === 'right' && direction !== 'left') direction = 'right';
-    }
-
-    // 手機滑動支援
+    // 滑動控制
     let touchStartX = 0, touchStartY = 0;
-
-    function handleTouchStart(e) {
+    canvas.addEventListener('touchstart', e => {
       const touch = e.touches[0];
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
-    }
+    });
+    canvas.addEventListener('touchend', e => {
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
 
-    function handleTouchMove(e) {
-      if (!touchStartX || !touchStartY) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - touchStartX;
-      const dy = touch.clientY - touchStartY;
-
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 10 && direction !== 'left') direction = 'right';
-        else if (dx < -10 && direction !== 'right') direction = 'left';
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (deltaX > 30) changeDirection('right');
+        else if (deltaX < -30) changeDirection('left');
       } else {
-        if (dy > 10 && direction !== 'up') direction = 'down';
-        else if (dy < -10 && direction !== 'down') direction = 'up';
+        if (deltaY > 30) changeDirection('down');
+        else if (deltaY < -30) changeDirection('up');
       }
-
-      touchStartX = 0;
-      touchStartY = 0;
-    }
-
-    setInterval(draw, 120);
+    });
   </script>
 </body>
 </html>

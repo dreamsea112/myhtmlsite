@@ -149,7 +149,8 @@
       const meters = value * units[from].factor;
       const resultValue = meters / units[to].factor;
 
-      const resultText = `${value} ${units[from].label} = ${resultValue.toFixed(6)} ${units[to].label}`;
+      const formattedResult = parseFloat(resultValue.toFixed(10)).toString();
+const resultText = `${value} ${units[from].label} = ${formattedResult} ${units[to].label}`;
       document.getElementById('result').textContent = resultText;
 
       const li = document.createElement('li');

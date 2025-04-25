@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>繁簡中文轉換工具</title>
+  <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/browser.min.js"></script>
+  <style>
+    body {
+      font-family: "微軟正黑體", sans-serif;
+      background-color: #f0f0f0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      font-size: 16px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    button {
+      margin-right: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>簡繁中文轉換工具</h1>
+  <textarea id="inputText" placeholder="請輸入簡體或繁體中文..."></textarea><br>
+  <button onclick="toTraditional()">簡體 ➜ 繁體</button>
+  <button onclick="toSimplified()">繁體 ➜ 簡體</button>
+  <button onclick="copyOutput()">複製翻譯內容</button>
+  <textarea id="outputText" placeholder="翻譯結果將顯示在這裡..." readonly></textarea>
+
+  <script>
+    // 事先初始化轉換器
+    const s2tConverter = OpenCC.ConverterSync({ from: 's2t.json' });
+    const t2sConverter = OpenCC.ConverterSync({ from: 't2s.json' });
+
+    function toTraditional() {
+      const input = document.getElementById("inputText").value;
+      const output = s2tConverter(input);
+      document.getElementById("outputText").value = output;
+    }
+
+    function toSimplified() {
+      const input = document.getElementById("inputText").value;
+      const output = t2sConverter(input);
+      document.getElementById("outputText").value = output;
+    }
+
+    function copyOutput() {
+      const output = document.getElementById("outputText");
+      output.select();
+      document.execCommand("copy");
+      alert("翻譯結果已複製！");
+    }
+  </script>
+</body>
+</html>

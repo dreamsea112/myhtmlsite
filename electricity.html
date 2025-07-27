@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電力換算器</title>
+    <style>
+        /* 設計主色調為淺藍色系，原始樣式依規則進行色彩更新 */
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background: linear-gradient(to bottom, #e0f0ff, #B2DEF2); /* 淺藍背景漸層 */
+            color: #01579b; /* 深藍字色強化可讀性 */
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #0277bd; /* 標題使用更亮眼藍色 */
+        }
+
+        .description {
+            background-color: #ffffff; /* ✅ 說明欄底色改為白色 */
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            font-size: 16px;
+            white-space: pre-wrap;
+            border: 1px solid #81d4fa; /* 淺藍邊框 */
+        }
+
+        .converter {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #ffffff; /* ✅ 外框底色為淺藍 */
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3); /* 淺藍陰影 */
+            border: 1px solid #81d4fa; /* 淺藍邊框 */
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+            color: #0277bd; /* 淺藍標籤文字 */
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 5px;
+            border: 1px solid #4fc3f7; /* 淺藍邊框 */
+            border-radius: 5px;
+            background-color: #ffffff; /* ✅ 白底輸入框 */
+            color: #01579b; /* 深藍輸入文字 */
+        }
+
+        button {
+            background-color: #4fc3f7; /* 淺藍按鈕 */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-right: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #29b6f6; /* 滑過更深淺藍 */
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #ffffff; /* ✅ 顯示框底色改為白色 */
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #4fc3f7; /* 淺藍邊框 */
+            color: #01579b; /* 深藍字色 */
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #666;
+        }
+        .footer p {
+            color: #0277bd;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>電力換算器</h1>
+
+    <div class="description">
+電壓 (伏特 V、E)
+電壓 (V) = 瓦數 (W) / 電流 (A)
+
+電流量 (安培 A、I)
+電流 (A) = 瓦數 (W) / 電壓 (V)
+
+電功率 (瓦數 W、P)
+電功 (W) = 電壓 (V) x 電流 (A)
+
+三相電
+電流 (A) = 瓦數 (W) / 電壓 (V) / 1.73
+
+頻率 Hz
+1 秒內正負電交換次數，60 Hz 是 1 秒交換 60 次。
+
+1 度電
+1 小時 (H) 用 1000 瓦 (W) 是 1 度電。
+10 小時 (H) 用 100 瓦 (W) 是 1 度電。
+
+馬力 HP
+馬力 HP = 746 W
+
+馬達轉速 RPM
+極數：2P、4P、6P、8P、12P
+馬達轉速 RPM = 120 x Hz / 極數
+可以先 120 除 極數 在 乘 頻率 Hz
+如：2P 是 60 x Hz；4P 是 30 x Hz；6P 是 20 x Hz
+
+電流15A=線徑1.6mm
+電流20A=線徑3.5mm
+電流30A=線徑5.5mm
+電流40A=線徑8mm
+電流50A=線徑14mm
+電流75A=線徑22mm
+電流80A=線徑30mm
+電流100A=線徑38mm
+    </div>
+
+    <div class="converter">
+        <label for="voltage">電壓 (V)</label>
+        <input type="number" id="voltage" placeholder="請輸入電壓 (伏特)">
+
+        <label for="current">電流 (A)</label>
+        <input type="number" id="current" placeholder="請輸入電流 (安培)">
+
+        <label for="watt">瓦數 (W)</label>
+        <input type="number" id="watt" placeholder="請輸入功率 (瓦特)">
+
+        <button onclick="convertPower()">換算</button>
+        <button onclick="clearInputs()">清除</button>
+
+        <div class="result" id="result"></div>
+    </div>
+        <div class="footer">
+            <p>by:慶宗</p>
+        </div>
+
+    <script>
+        function convertPower() {
+            const V = parseFloat(document.getElementById("voltage").value);
+            const A = parseFloat(document.getElementById("current").value);
+            const W = parseFloat(document.getElementById("watt").value);
+
+            let result = "";
+            let count = 0;
+
+            if (!isNaN(V) && !isNaN(A)) {
+                result += `根據輸入的電壓與電流，功率為：${(V * A).toFixed(2)} W\n`;
+                count++;
+            }
+
+            if (!isNaN(W) && !isNaN(A)) {
+                result += `根據輸入的功率與電流，電壓為：${(W / A).toFixed(2)} V\n`;
+                count++;
+            }
+
+            if (!isNaN(W) && !isNaN(V)) {
+                result += `根據輸入的功率與電壓，電流為：${(W / V).toFixed(2)} A\n`;
+                count++;
+            }
+
+            if (count === 0) {
+                result = "請至少輸入兩個有效數值進行換算。";
+            }
+
+            document.getElementById("result").textContent = result;
+        }
+
+        function clearInputs() {
+            document.getElementById("voltage").value = "";
+            document.getElementById("current").value = "";
+            document.getElementById("watt").value = "";
+            document.getElementById("result").textContent = "";
+        }
+    </script>
+</body>
+</html>

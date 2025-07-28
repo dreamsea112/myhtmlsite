@@ -153,9 +153,9 @@
       now.setMinutes(now.getMinutes() + minutes);
 
       // 將「上午」或「下午」前插入三個空格，避免手機顯示換行錯誤
-      const formattedTime = now.toLocaleString('zh-TW').replace('上午', '   上午').replace('下午', '   下午');
+      const formattedTime = now.toLocaleString('zh-TW').replace('上午', '  上午').replace('下午', '  下午');
 
-      document.getElementById('futureTimeOutput').textContent = `加上後的時間： ${formattedTime}`;
+      document.getElementById('futureTimeOutput').textContent = `加上後的時間 ： ${formattedTime}`;
     }
 
     function resetTime() {

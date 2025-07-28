@@ -13,6 +13,13 @@
       padding: 30px;
     }
 
+    /* 新增：國家標準時間樣式 */
+    #time-label {
+      font-size: 20px;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
     h1#clock {
       font-size: 48px;
       margin-bottom: 40px;
@@ -66,11 +73,18 @@
   </style>
 </head>
 <body>
+
+  <!-- 新增：國家標準時間文字 -->
+  <div id="time-label">國家標準時間</div>
   <h1 id="clock">--:--:--</h1>
 
   <div class="section">
     <h2>時間換算</h2>
+
+    <!-- 新增：小時輸入欄位 -->
+    <input type="number" id="hoursInput" placeholder="輸入小時數">
     <input type="number" id="minutesInput" placeholder="輸入分鐘數">
+
     <button onclick="convertTime()">換算</button>
     <button onclick="resetTime()">刪除</button>
     <div class="output" id="hourOutput">結果：-- 小時</div>
@@ -141,24 +155,43 @@
     syncOnlineTime();
     setInterval(updateClockDisplay, 1000);
 
+    // 修改：時間換算邏輯，支援「小時」與「分鐘」輸入
     function convertTime() {
-      const minutes = parseInt(document.getElementById('minutesInput').value);
-      if (isNaN(minutes)) return;
+      const hourInput = parseInt(document.getElementById('hoursInput').value);
+      const minInput = parseInt(document.getElementById('minutesInput').value);
 
-      const hoursPart = Math.floor(minutes / 60);
-      const minutesPart = minutes % 60;
-      document.getElementById('hourOutput').textContent = `結果：${hoursPart} 小時 ${minutesPart} 分`;
+      // 若兩者皆為空，則不執行
+      if (isNaN(hourInput) && isNaN(minInput)) return;
 
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + minutes);
+      let totalMinutes = 0;
+      let displayHours = 0;
+      let displayMinutes = 0;
 
-      // 將「上午」或「下午」前插入三個空格，避免手機顯示換行錯誤
-      const formattedTime = now.toLocaleString('zh-TW').replace('上午', '  上午').replace('下午', '  下午');
+      if (!isNaN(hourInput)) totalMinutes += hourInput * 60;
+      if (!isNaN(minInput)) totalMinutes += minInput;
 
-      document.getElementById('futureTimeOutput').textContent = `加上後的時間 ： ${formattedTime}`;
+      // 若只輸入分鐘，則換算成幾小時幾分顯示
+      if (isNaN(hourInput) && !isNaN(minInput)) {
+        displayHours = Math.floor(minInput / 60);
+        displayMinutes = minInput % 60;
+      } else {
+        // 若有輸入小時，則照原樣顯示
+        displayHours = isNaN(hourInput) ? 0 : hourInput;
+        displayMinutes = isNaN(minInput) ? 0 : minInput;
+      }
+
+      document.getElementById('hourOutput').textContent = `結果：${displayHours} 小時 ${displayMinutes} 分`;
+
+      const future = new Date();
+      future.setMinutes(future.getMinutes() + totalMinutes);
+
+      // 格式化時間
+      const formatted = future.toLocaleString('zh-TW').replace('上午', '  上午').replace('下午', '  下午');
+      document.getElementById('futureTimeOutput').textContent = `加上後的時間 ： ${formatted}`;
     }
 
     function resetTime() {
+      document.getElementById('hoursInput').value = '';
       document.getElementById('minutesInput').value = '';
       document.getElementById('hourOutput').textContent = '結果：-- 小時';
       document.getElementById('futureTimeOutput').textContent = '加上後的時間：--';

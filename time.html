@@ -53,15 +53,16 @@
       font-size: 18px;
     }
 
-            .footer {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #666;
-        }
-        .footer p {
-            color: #003366;
-            font-weight: bold;
-        }
+    .footer {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #666;
+    }
+
+    .footer p {
+      color: #003366;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -87,9 +88,10 @@
     <button onclick="resetSpeed()">刪除</button>
     <div class="output" id="speedResult">換算結果：--</div>
   </div>
-          <div class="footer">
-            <p>by:慶宗</p>
-        </div>
+
+  <div class="footer">
+    <p>by:慶宗</p>
+  </div>
 
   <script>
     // 新增：線上時間物件與 fallback 機制
@@ -149,7 +151,11 @@
 
       const now = new Date();
       now.setMinutes(now.getMinutes() + minutes);
-      document.getElementById('futureTimeOutput').textContent = `加上後的時間：   ${now.toLocaleString('zh-TW')}`;
+
+      // 將「上午」或「下午」前插入兩個空格，避免手機顯示換行錯誤
+      const formattedTime = now.toLocaleString('zh-TW').replace('上午', '  上午').replace('下午', '  下午');
+
+      document.getElementById('futureTimeOutput').textContent = `加上後的時間： ${formattedTime}`;
     }
 
     function resetTime() {

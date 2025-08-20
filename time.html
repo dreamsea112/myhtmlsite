@@ -21,7 +21,7 @@
     }
 
     h1#clock {
-      font-size: 48px;
+      font-size: 36px;
       margin-bottom: 40px;
     }
 
@@ -91,6 +91,17 @@
     <div class="output" id="futureTimeOutput">加上後的時間：--</div>
   </div>
 
+  <!-- 新增：時間差換算（分鐘）功能 -->
+  <div class="section">
+    <h2>時間差換算（分鐘）</h2>
+    <div>開始時間（自動帶入現在時間）：<span id="startTimeDisplay">--:--</span></div>
+    <input type="number" id="endHour" placeholder="結束小時(24H)">
+    <input type="number" id="endMinute" placeholder="結束分鐘">
+    <button onclick="calcTimeDiff()">換算</button>
+    <button onclick="resetTimeDiff()">刪除</button>
+    <div class="output" id="timeDiffResult">結果：-- 分鐘</div>
+  </div>
+
   <div class="section">
     <h2>網路速度換算</h2>
     <input type="number" id="speedInput" placeholder="輸入數值">
@@ -141,6 +152,11 @@
         hour: '2-digit', minute: '2-digit', second: '2-digit'
       };
       document.getElementById('clock').textContent = currentTime.toLocaleString('zh-TW', options);
+
+      // 顯示時間差換算起始時間
+      document.getElementById('startTimeDisplay').textContent =
+        currentTime.getHours().toString().padStart(2, '0') + ":" +
+        currentTime.getMinutes().toString().padStart(2, '0');
 
       // 每秒遞增 1 秒模擬時鐘前進
       currentTime.setSeconds(currentTime.getSeconds() + 1);
@@ -195,6 +211,35 @@
       document.getElementById('minutesInput').value = '';
       document.getElementById('hourOutput').textContent = '結果：-- 小時';
       document.getElementById('futureTimeOutput').textContent = '加上後的時間：--';
+    }
+
+    // 新增：時間差換算（分鐘）邏輯
+    function calcTimeDiff() {
+      if (!currentTime) return;
+      const startHour = currentTime.getHours();
+      const startMinute = currentTime.getMinutes();
+
+      const endHour = parseInt(document.getElementById('endHour').value);
+      const endMinute = parseInt(document.getElementById('endMinute').value);
+
+      if (isNaN(endHour) || isNaN(endMinute)) return;
+
+      let startTotal = startHour * 60 + startMinute;
+      let endTotal = endHour * 60 + endMinute;
+      let diff = endTotal - startTotal;
+
+      // 跨日判斷
+      if (diff < 0) {
+        diff += 24 * 60;
+      }
+
+      document.getElementById('timeDiffResult').textContent = `結果：${diff} 分鐘`;
+    }
+
+    function resetTimeDiff() {
+      document.getElementById('endHour').value = '';
+      document.getElementById('endMinute').value = '';
+      document.getElementById('timeDiffResult').textContent = '結果：-- 分鐘';
     }
 
     function convertSpeed() {

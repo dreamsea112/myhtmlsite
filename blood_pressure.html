@@ -114,6 +114,41 @@
     }
 
     loadRecords();
+
+    /* 以下為新增區塊：Firebase 雲端同步（不影響原有邏輯） */
+
+    const FIREBASE_DB_URL = "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+    const originalSetItem = localStorage.setItem;
+
+    localStorage.setItem = function(key, value) {
+        originalSetItem.apply(this, arguments);
+
+        if (key === STORAGE_KEY) {
+            fetch(FIREBASE_DB_URL + "/bloodPressure.json", {
+                method: "PUT",
+                body: value
+            });
+        }
+    };
+
+    function syncFromCloud() {
+        fetch(FIREBASE_DB_URL + "/bloodPressure.json")
+            .then(response => response.json())
+            .then(data => {
+                if (data !== null) {
+                    originalSetItem.call(
+                        localStorage,
+                        STORAGE_KEY,
+                        JSON.stringify(data)
+                    );
+                    loadRecords();
+                }
+            });
+    }
+
+    /* 頁面載入後嘗試從雲端同步一次 */
+    syncFromCloud();
 </script>
 
 </body>

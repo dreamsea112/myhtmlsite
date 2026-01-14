@@ -76,7 +76,7 @@
                 <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
                 <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
-                <td><button onclick="remove(${index})">🗑 刪除</button></td>
+                <td><button onclick="remove(${index})">刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
@@ -115,7 +115,7 @@
 
     loadRecords();
 
-    /* 以下為新增區塊：Firebase 雲端同步（不影響原有邏輯） */
+    /* 以下為新增區塊：Firebase 雲端同步（修正 iOS 瀏覽器相容性） */
 
     const FIREBASE_DB_URL = "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -127,13 +127,20 @@
         if (key === STORAGE_KEY) {
             fetch(FIREBASE_DB_URL + "/bloodPressure.json", {
                 method: "PUT",
+                mode: "cors",
+                headers: {
+                    "Content-Type": "application/json"
+                },
                 body: value
             });
         }
     };
 
     function syncFromCloud() {
-        fetch(FIREBASE_DB_URL + "/bloodPressure.json")
+        fetch(FIREBASE_DB_URL + "/bloodPressure.json", {
+            method: "GET",
+            mode: "cors"
+        })
             .then(response => response.json())
             .then(data => {
                 if (data !== null) {

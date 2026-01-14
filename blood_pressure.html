@@ -59,11 +59,44 @@
     <tbody id="records"></tbody>
 </table>
 
+<!-- Firebase v9 相容版本 -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
 
+    /* Firebase 設定（請替換成你自己的） */
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT.asia-southeast1.firebasedatabase.app",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "XXXX",
+        appId: "XXXX"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    /* 關鍵修正：強制使用 Long Polling，避免 iOS Safari 問題 */
+    const database = firebase.database(undefined, {
+        experimentalForceLongPolling: true
+    });
+
+    const dbRef = database.ref("bloodPressureRecords");
+
     function loadRecords() {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        dbRef.once("value").then(snapshot => {
+            const data = snapshot.val() || [];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            render(data);
+        }).catch(err => {
+            console.error("Firebase 讀取失敗", err);
+        });
+    }
+
+    function render(data) {
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
 
@@ -76,7 +109,7 @@
                 <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
                 <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
-                <td><button onclick="remove(${index})">刪除</button></td>
+                <td><button onclick="remove(${index})">🗑 刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
@@ -84,6 +117,7 @@
 
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        dbRef.set(data);
     }
 
     function addRecord() {
@@ -97,7 +131,7 @@
             note: ""
         });
         save(data);
-        loadRecords();
+        render(data);
     }
 
     function update(index, key, value) {
@@ -110,52 +144,10 @@
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.splice(index, 1);
         save(data);
-        loadRecords();
+        render(data);
     }
 
     loadRecords();
-
-    /* 以下為新增區塊：Firebase 雲端同步（修正 iOS 瀏覽器相容性） */
-
-    const FIREBASE_DB_URL = "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app";
-
-    const originalSetItem = localStorage.setItem;
-
-    localStorage.setItem = function(key, value) {
-        originalSetItem.apply(this, arguments);
-
-        if (key === STORAGE_KEY) {
-            fetch(FIREBASE_DB_URL + "/bloodPressure.json", {
-                method: "PUT",
-                mode: "cors",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: value
-            });
-        }
-    };
-
-    function syncFromCloud() {
-        fetch(FIREBASE_DB_URL + "/bloodPressure.json", {
-            method: "GET",
-            mode: "cors"
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data !== null) {
-                    originalSetItem.call(
-                        localStorage,
-                        STORAGE_KEY,
-                        JSON.stringify(data)
-                    );
-                    loadRecords();
-                }
-            });
-    }
-
-    /* 頁面載入後嘗試從雲端同步一次 */
-    syncFromCloud();
 </script>
 
 </body>

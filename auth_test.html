@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase 密碼測試</title>
+</head>
+<body>
+
+<h2>密碼驗證測試</h2>
+
+<input type="password" id="pwd" placeholder="輸入密碼">
+<button onclick="checkPwd()">送出</button>
+
+<p id="msg"></p>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
+  authDomain: "my-health-record-1a9f2.firebaseapp.com",
+  databaseURL: "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "my-health-record-1a9f2",
+  storageBucket: "my-health-record-1a9f2.firebasestorage.app",
+  messagingSenderId: "884879920046",
+  appId: "1:884879920046:web:b3a7505188d0781907163f"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const database = firebase.database(undefined, {
+    experimentalForceLongPolling: true
+});
+
+function checkPwd() {
+    const pwd = document.getElementById("pwd").value;
+
+    database.ref("__auth_guard").set({
+        pwd: pwd
+    }).then(() => {
+        document.getElementById("msg").innerText = "Firebase 回傳：驗證成功";
+    }).catch(err => {
+        document.getElementById("msg").innerText = "Firebase 回傳：驗證失敗";
+        console.error(err);
+    });
+}
+</script>
+
+</body>
+</html>

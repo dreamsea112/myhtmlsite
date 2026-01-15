@@ -1,73 +1,70 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>血壓紀錄表</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        h1 {
-            text-align: center;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background: #eee;
-        }
-        input {
-            width: 100%;
-            box-sizing: border-box;
-        }
-        button {
-            padding: 6px 10px;
-            cursor: pointer;
-        }
-        .add-btn {
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
+<meta charset="UTF-8">
+<title>血壓紀錄</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<h1>血壓紀錄表</h1>
+<style>
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  background: #f5f5f5;
+  padding: 20px;
+}
+.box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 420px;
+  margin: auto;
+  box-shadow: 0 0 10px rgba(0,0,0,.1);
+}
+input, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  font-size: 16px;
+}
+button {
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+}
+.hidden {
+  display: none;
+}
+</style>
 
-<button class="add-btn" onclick="addRecord()">➕ 新增紀錄</button>
-
-<table>
-    <thead>
-        <tr>
-            <th>日期</th>
-            <th>時間</th>
-            <th>收縮壓<br>(mmHg)</th>
-            <th>舒張壓<br>(mmHg)</th>
-            <th>心跳<br>(次/分)</th>
-            <th>備註</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody id="records"></tbody>
-</table>
-
-<!-- Firebase v9 相容版本 -->
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+
+<body>
+
+<div class="box" id="loginBox">
+  <h2>🔒 輸入密碼</h2>
+  <input type="password" id="password" placeholder="請輸入密碼">
+  <button onclick="verifyPassword()">驗證</button>
+  <p id="loginMsg"></p>
+</div>
+
+<div class="box hidden" id="bpBox">
+  <h2>🩺 血壓紀錄</h2>
+  <input type="number" id="sys" placeholder="收縮壓">
+  <input type="number" id="dia" placeholder="舒張壓">
+  <input type="number" id="pulse" placeholder="心跳">
+  <button onclick="saveBP()">儲存</button>
+  <p id="bpMsg"></p>
+
+  <hr>
+  <button onclick="logout()" style="background:#dc3545">解除此裝置信任</button>
+</div>
 
 <script>
-    const STORAGE_KEY = "bloodPressureRecords";
-
-    /* Firebase 設定（請替換成你自己的） */
-    const firebaseConfig = {
+// ===== Firebase 設定=====
+const firebaseConfig = {
   apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
   authDomain: "my-health-record-1a9f2.firebaseapp.com",
   databaseURL: "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -76,80 +73,65 @@
   messagingSenderId: "884879920046",
   appId: "1:884879920046:web:b3a7505188d0781907163f"
 };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-    firebase.initializeApp(firebaseConfig);
+// ===== 啟動時檢查是否已驗證 =====
+if (localStorage.getItem("bp_auth") === "ok") {
+  showBP();
+}
 
-    /* 關鍵修正：強制使用 Long Polling，避免 iOS Safari 問題 */
-    const database = firebase.database(undefined, {
-        experimentalForceLongPolling: true
-    });
+// ===== 顯示切換 =====
+function showLogin() {
+  loginBox.classList.remove("hidden");
+  bpBox.classList.add("hidden");
+}
+function showBP() {
+  loginBox.classList.add("hidden");
+  bpBox.classList.remove("hidden");
+}
 
-    const dbRef = database.ref("bloodPressureRecords");
+// ===== 驗證密碼（用 Firebase Rules 判斷）=====
+function verifyPassword() {
+  const pwd = password.value;
+  loginMsg.textContent = "驗證中…";
 
-    function loadRecords() {
-        dbRef.once("value").then(snapshot => {
-            const data = snapshot.val() || [];
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            render(data);
-        }).catch(err => {
-            console.error("Firebase 讀取失敗", err);
-        });
-    }
+  const testRef = db.ref("auth_test").push();
 
-    function render(data) {
-        const tbody = document.getElementById("records");
-        tbody.innerHTML = "";
+  testRef.set({
+    pwd: pwd,
+    time: Date.now()
+  })
+  .then(() => {
+    localStorage.setItem("bp_auth", "ok");
+    loginMsg.textContent = "驗證成功";
+    showBP();
+  })
+  .catch(() => {
+    loginMsg.textContent = "密碼錯誤";
+  });
+}
 
-        data.forEach((record, index) => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td><input type="date" value="${record.date}" onchange="update(${index}, 'date', this.value)"></td>
-                <td><input type="time" value="${record.time}" onchange="update(${index}, 'time', this.value)"></td>
-                <td><input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)"></td>
-                <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
-                <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
-                <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
-                <td><button onclick="remove(${index})">🗑 刪除</button></td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+// ===== 儲存血壓 =====
+function saveBP() {
+  const data = {
+    sys: Number(sys.value),
+    dia: Number(dia.value),
+    pulse: Number(pulse.value),
+    time: Date.now()
+  };
 
-    function save(data) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        dbRef.set(data);
-    }
+  db.ref("bp_records").push(data)
+    .then(() => bpMsg.textContent = "已儲存")
+    .catch(() => bpMsg.textContent = "寫入失敗（未授權）");
+}
 
-    function addRecord() {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.push({
-            date: "",
-            time: "",
-            sys: "",
-            dia: "",
-            hr: "",
-            note: ""
-        });
-        save(data);
-        render(data);
-    }
-
-    function update(index, key, value) {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data[index][key] = value;
-        save(data);
-    }
-
-    function remove(index) {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.splice(index, 1);
-        save(data);
-        render(data);
-    }
-
-    loadRecords();
+// ===== 解除裝置信任 =====
+function logout() {
+  localStorage.removeItem("bp_auth");
+  showLogin();
+}
 </script>
 
 </body>
 </html>
-

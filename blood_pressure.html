@@ -73,8 +73,13 @@ const firebaseConfig = {
   messagingSenderId: "884879920046",
   appId: "1:884879920046:web:b3a7505188d0781907163f"
 };
+
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+
+// iOS Safari 穩定性設定
+const db = firebase.database(undefined, {
+  experimentalForceLongPolling: true
+});
 
 // ===== 啟動時檢查是否已驗證 =====
 if (localStorage.getItem("bp_auth") === "ok") {
@@ -91,16 +96,18 @@ function showBP() {
   bpBox.classList.remove("hidden");
 }
 
-// ===== 驗證密碼（用 Firebase Rules 判斷）=====
+// ===== 驗證密碼（真正走 Firebase Rules）=====
 function verifyPassword() {
   const pwd = password.value;
-  loginMsg.textContent = "驗證中…";
+  loginMsg.textContent = "驗證中";
 
-  const testRef = db.ref("auth_test").push();
-
-  testRef.set({
-    pwd: pwd,
-    time: Date.now()
+  // 第一步：送密碼給 Rules 驗證
+  db.ref("__auth_guard").set({
+    pwd: pwd
+  })
+  .then(() => {
+    // 第二步：寫入 verified，正式解鎖血壓資料
+    return db.ref("__auth_guard/verified").set(true);
   })
   .then(() => {
     localStorage.setItem("bp_auth", "ok");
@@ -121,7 +128,7 @@ function saveBP() {
     time: Date.now()
   };
 
-  db.ref("bp_records").push(data)
+  db.ref("bloodPressureRecords").push(data)
     .then(() => bpMsg.textContent = "已儲存")
     .catch(() => bpMsg.textContent = "寫入失敗（未授權）");
 }

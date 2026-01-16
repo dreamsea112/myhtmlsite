@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>血壓紀錄表</title>
+
+    <!-- 新增：行動裝置自動縮放，不影響電腦 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -69,7 +73,8 @@
 
 <h1>血壓紀錄表</h1>
 
-<button class="add-btn" onclick="addRecord()">➕ 新增紀錄</button>
+<button class="add-btn" onclick="addRecord()">新增紀錄</button>
+<button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
 
 <table>
     <thead>
@@ -157,7 +162,7 @@
                 <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
                 <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
-                <td><button onclick="remove(${index})">🗑 刪除</button></td>
+                <td><button onclick="remove(${index})">刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
@@ -168,9 +173,14 @@
         dbRef.set(data);
     }
 
+    /* 新增：新增紀錄時自動帶入目前日期與時間 */
     function addRecord() {
+        const now = new Date();
+        const date = now.toISOString().slice(0,10);
+        const time = now.toTimeString().slice(0,5);
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.push({ date:"", time:"", sys:"", dia:"", hr:"", note:"" });
+        data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"" });
         save(data);
         render(data);
     }
@@ -181,11 +191,32 @@
         save(data);
     }
 
+    /* 新增：刪除前確認提示 */
     function remove(index) {
+        if (!confirm("確定要刪除這筆紀錄嗎")) return;
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.splice(index, 1);
         save(data);
         render(data);
+    }
+
+    /* 新增：下載紀錄為 CSV */
+    function downloadCSV() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        if (!data.length) return;
+
+        let csv = "日期,時間,收縮壓,舒張壓,心跳,備註\n";
+        data.forEach(r => {
+            csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note}\n`;
+        });
+
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "blood_pressure_records.csv";
+        a.click();
+        URL.revokeObjectURL(url);
     }
 </script>
 

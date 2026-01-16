@@ -16,10 +16,18 @@
         h1 {
             text-align: center;
         }
+
+        /* 新增：允許表格在行動裝置橫向捲動，避免欄位被強制壓縮 */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
+            /* 新增：避免表格被壓到不可閱讀 */
+            min-width: 900px;
         }
         th, td {
             border: 1px solid #ccc;
@@ -33,6 +41,17 @@
             width: 100%;
             box-sizing: border-box;
         }
+
+        /* 新增：確保心跳欄位在手機上仍可完整顯示數字 */
+        th:nth-child(5), td:nth-child(5) {
+            min-width: 90px;
+        }
+
+        /* 新增：確保備註欄位在手機上可正常輸入與閱讀 */
+        th:nth-child(6), td:nth-child(6) {
+            min-width: 160px;
+        }
+
         button {
             padding: 6px 10px;
             cursor: pointer;
@@ -76,6 +95,8 @@
 <button class="add-btn" onclick="addRecord()">新增紀錄</button>
 <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
 
+<!-- 新增：表格包覆容器 -->
+<div class="table-wrapper">
 <table>
     <thead>
         <tr>
@@ -90,6 +111,7 @@
     </thead>
     <tbody id="records"></tbody>
 </table>
+</div>
 
 <!-- Firebase v9 相容版本 -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -200,7 +222,7 @@
         render(data);
     }
 
-    /* 新增：下載紀錄為 CSV */
+    /* 新增：下載紀錄為 CSV，加入 UTF-8 BOM 以避免 Excel 亂碼 */
     function downloadCSV() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         if (!data.length) return;
@@ -210,7 +232,8 @@
             csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note}\n`;
         });
 
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const bom = "\uFEFF";
+        const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;

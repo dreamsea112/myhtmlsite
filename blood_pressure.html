@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>血壓/用藥紀錄表</title>
 
-    <!-- 行動裝置自動縮放 -->
+    <!-- 新增：行動裝置自動縮放，不影響電腦 -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
@@ -13,14 +13,20 @@
             padding: 20px;
             background: #f5f5f5;
         }
-        h1 { text-align: center; }
+        h1 {
+            text-align: center;
+        }
 
-        .table-wrapper { overflow-x: auto; }
+        /* 新增：允許表格在行動裝置橫向捲動，避免欄位被強制壓縮 */
+        .table-wrapper {
+            overflow-x: auto;
+        }
 
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
+            /* 新增：避免表格被壓到不可閱讀 */
             min-width: 980px;
         }
         th, td {
@@ -28,17 +34,38 @@
             padding: 8px;
             text-align: center;
         }
-        th { background: #eee; }
+        th {
+            background: #eee;
+        }
+        input {
+            width: 100%;
+            box-sizing: border-box;
+        }
 
-        input { width: 100%; box-sizing: border-box; }
+        /* 新增：確保心跳欄位在手機上仍可完整顯示數字 */
+        th:nth-child(5), td:nth-child(5) {
+            min-width: 90px;
+        }
 
-        th:nth-child(5), td:nth-child(5) { min-width: 90px; }
-        th:nth-child(6), td:nth-child(6) { min-width: 160px; }
-        th:nth-child(7), td:nth-child(7) { min-width: 90px; }
+        /* 新增：確保備註欄位在手機上可正常輸入與閱讀 */
+        th:nth-child(6), td:nth-child(6) {
+            min-width: 160px;
+        }
 
-        button { padding: 6px 10px; cursor: pointer; }
-        .add-btn { margin-bottom: 10px; }
+        /* 新增：已服藥欄位的最小寬度 */
+        th:nth-child(7), td:nth-child(7) {
+            min-width: 90px;
+        }
 
+        button {
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+        .add-btn {
+            margin-bottom: 10px;
+        }
+
+        /* 新增：密碼遮罩層，不影響原本版面 */
         #authLayer {
             position: fixed;
             inset: 0;
@@ -55,8 +82,12 @@
             text-align: center;
         }
 
-        .bp-high { background-color: #ffe5e5; }
+        /* 新增：高血壓顯示樣式（僅影響顯示） */
+        .bp-high {
+            background-color: #ffe5e5;
+        }
 
+        /* 新增：提醒文字樣式 */
         #medReminder, #avgInfo {
             margin-bottom: 10px;
             text-align: center;
@@ -64,16 +95,17 @@
             font-weight: bold;
         }
 
-        #noMedBlock {
-            margin-top: 15px;
-            text-align: center;
-            color: red;
-            font-weight: bold;
+        /* 新增：備註快速選單按鈕 */
+        .note-btn {
+            margin: 2px;
+            padding: 2px 6px;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
 
+<!-- 新增：密碼驗證區塊 -->
 <div id="authLayer">
     <div id="authBox">
         <h3>請輸入密碼</h3>
@@ -83,10 +115,12 @@
     </div>
 </div>
 
+<!-- 新增：每日服藥提醒 -->
 <div id="medReminder" style="display:none;">
     今日尚未勾選任何已服藥紀錄
 </div>
 
+<!-- 新增：今日平均血壓顯示 -->
 <div id="avgInfo" style="display:none;"></div>
 
 <h1>血壓/用藥紀錄表</h1>
@@ -94,25 +128,25 @@
 <button class="add-btn" onclick="addRecord()">新增紀錄</button>
 <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
 
+<!-- 新增：表格包覆容器 -->
 <div class="table-wrapper">
 <table>
     <thead>
         <tr>
             <th>日期</th>
             <th>時間</th>
-            <th>收縮壓</th>
-            <th>舒張壓</th>
-            <th>心跳</th>
+            <th>收縮壓<br>(mmHg)</th>
+            <th>舒張壓<br>(mmHg)</th>
+            <th>心跳<br>(次/分)</th>
             <th>備註</th>
-            <th>已服藥</th>
+            <!-- 新增：服藥確認欄位 -->
+            <th>已服藥<br>(降壓安/脂利降)</th>
             <th>操作</th>
         </tr>
     </thead>
     <tbody id="records"></tbody>
 </table>
 </div>
-
-<div id="noMedBlock"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -137,16 +171,6 @@
     });
 
     const dbRef = database.ref("bloodPressureRecords");
-    const noMedRef = database.ref("bloodPressureNoMedRecords");
-
-    /* 新增：取得本地日期字串（避免 UTC 跨日錯誤） */
-    function getLocalDateString() {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, "0");
-        const d = String(now.getDate()).padStart(2, "0");
-        return y + "-" + m + "-" + d;
-    }
 
     function verifyPassword() {
         const pwd = document.getElementById("authPwd").value;
@@ -182,60 +206,87 @@
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
 
-        const today = getLocalDateString();
+        const today = new Date().toISOString().slice(0,10);
+        let todaySys = 0;
+        let todayDia = 0;
+        let todayCount = 0;
         let tookMedToday = false;
 
         data.forEach(r => {
-            if (r.date === today && r.tookMed) {
-                tookMedToday = true;
+            if (r.date === today) {
+                if (r.sys && r.dia) {
+                    todaySys += Number(r.sys);
+                    todayDia += Number(r.dia);
+                    todayCount++;
+                }
+                if (r.tookMed) tookMedToday = true;
             }
         });
 
         if (!tookMedToday) {
             document.getElementById("medReminder").style.display = "block";
-            noMedRef.child(today).set({ date: today });
         } else {
             document.getElementById("medReminder").style.display = "none";
-            noMedRef.child(today).remove();
         }
 
-        noMedRef.child(today).once("value").then(snap => {
-            document.getElementById("noMedBlock").innerHTML = snap.exists()
-                ? today + " 未服藥紀錄 <button onclick=\"noMedRef.child('" + today + "').remove()\">刪除</button>"
-                : "";
-        });
+        if (todayCount > 0) {
+            document.getElementById("avgInfo").style.display = "block";
+            document.getElementById("avgInfo").textContent =
+                "今日平均收縮壓：" + Math.round(todaySys / todayCount) +
+                "　今日平均舒張壓：" + Math.round(todayDia / todayCount);
+        } else {
+            document.getElementById("avgInfo").style.display = "none";
+        }
 
         data.forEach((record, index) => {
             const tr = document.createElement("tr");
+
+            const sysHigh = Number(record.sys) >= 140;
+            const diaHigh = Number(record.dia) >= 90;
+
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="update(${index}, 'date', this.value)"></td>
                 <td><input type="time" value="${record.time}" onchange="update(${index}, 'time', this.value)"></td>
-                <td><input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)"></td>
-                <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
+                <td class="${sysHigh ? "bp-high" : ""}">
+                    <input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)">
+                </td>
+                <td class="${diaHigh ? "bp-high" : ""}">
+                    <input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
+                </td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
-                <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
-                <td><input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)"></td>
+                <td>
+                    <input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)">
+                </td>
+                <td>
+                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
+                </td>
                 <td><button onclick="remove(${index})">刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
     }
 
+    function quickNote(index, text) {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        data[index].note = text;
+        save(data);
+        render(data);
+    }
+
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
-        render(data);
     }
 
     function addRecord() {
         const now = new Date();
+        const date = now.toISOString().slice(0,10);
+        const time = now.toTimeString().slice(0,5);
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.push({
-            date: getLocalDateString(),
-            time: String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0"),
-            sys:"", dia:"", hr:"", note:"", tookMed:false
-        });
+        data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
         save(data);
+        render(data);
     }
 
     function update(index, key, value) {
@@ -249,6 +300,7 @@
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.splice(index, 1);
         save(data);
+        render(data);
     }
 
     function downloadCSV() {

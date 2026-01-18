@@ -1,478 +1,953 @@
 <!DOCTYPE html>
+
 <html lang="zh-Hant">
+
 <head>
+
     <meta charset="UTF-8">
+
     <title>血壓/用藥紀錄表</title>
+
+
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+
+
     <style>
+
         body {
+
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
             padding: 20px;
+
             background: #f5f5f5;
+
         }
+
         h1 {
+
             text-align: center;
+
         }
+
+
 
         
+
         /* 新增：允許表格在行動裝置橫向捲動，避免欄位被強制壓縮 */
+
         .table-wrapper {
+
             overflow-x: auto;
+
         }
+
+
 
         table {
+
             width: 100%;
+
             border-collapse: collapse;
+
             background: white;
+
             /* 新增：避免表格被壓到不可閱讀 */
+
             min-width: 980px;
+
         }
+
         th, td {
+
             border: 1px solid #ccc;
+
             padding: 8px;
+
             text-align: center;
+
         }
+
         th {
+
             background: #eee;
+
         }
+
         input {
+
             width: 100%;
+
             box-sizing: border-box;
+
         }
+
+
 
         /* 新增：確保心跳欄位在手機上仍可完整顯示數字 */
+
         th:nth-child(5), td:nth-child(5) {
+
             min-width: 90px;
+
         }
+
+
 
         /* 新增：確保備註欄位在手機上可正常輸入與閱讀 */
+
         th:nth-child(6), td:nth-child(6) {
+
             min-width: 160px;
+
         }
+
+
 
         /* 新增：已服藥欄位的最小寬度 */
+
         th:nth-child(7), td:nth-child(7) {
+
             min-width: 90px;
+
         }
+
+
 
         button {
+
             padding: 6px 10px;
+
             cursor: pointer;
+
         }
+
         .add-btn {
+
             margin-bottom: 10px;
+
         }
+
+
 
         #authLayer {
+
             position: fixed;
+
             inset: 0;
+
             background: rgba(245,245,245,0.95);
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             z-index: 1000;
+
         }
+
         #authBox {
+
             background: white;
+
             padding: 20px;
+
             border: 1px solid #ccc;
+
             width: 300px;
+
             text-align: center;
+
         }
+
+
 
         /* 新增：高血壓顯示樣式（僅影響顯示） */
+
         .bp-high {
+
             background-color: #ffe5e5;
+
         }
+
+
 
         /* 新增：提醒文字樣式 */
+
         #medReminder, #avgInfo {
+
             margin-bottom: 10px;
+
             text-align: center;
+
             color: #a00;
+
             font-weight: bold;
+
         }
+
+
 
         /* 新增：備註快速選單按鈕 */
+
         .note-btn {
+
             margin: 2px;
+
             padding: 2px 6px;
+
             font-size: 12px;
+
         }
+
+
 
         /* 新增：圖表彈窗與月份選擇樣式 */
+
         #chartLayer {
+
             position: fixed;
+
             inset: 0;
+
             background: white;
+
             display: none;
+
             flex-direction: column;
+
             padding: 20px;
+
             z-index: 999;
+
         }
+
         .filter-section {
+
             text-align: center;
+
             margin-bottom: 15px;
+
         }
+
         #monthFilter {
+
             padding: 5px;
+
             font-size: 16px;
+
         }
+
     </style>
+
 </head>
+
 <body>
 
+
+
 <div id="authLayer">
+
     <div id="authBox">
+
         <h3>請輸入密碼</h3>
+
         <input type="password" id="authPwd" placeholder="密碼">
+
         <button onclick="verifyPassword()">驗證</button>
+
         <div id="authMsg"></div>
+
     </div>
+
 </div>
+
+
 
 <div id="chartLayer">
+
     <div style="text-align:right;">
+
         <button onclick="toggleChart(false)">關閉圖表</button>
+
     </div>
+
     <div style="flex:1; min-height:0;">
+
         <canvas id="bpChart"></canvas>
+
     </div>
+
 </div>
 
+
+
 <div id="medReminder" style="display:none;">
+
     今日尚未勾選任何已服藥紀錄
+
 </div>
+
+
 
 <div id="avgInfo" style="display:none;"></div>
 
+
+
 <h1>血壓/用藥紀錄表</h1>
 
+
+
 <div class="filter-section">
+
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
+
     <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
+
     <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">顯示趨勢圖</button>
+
     <span style="margin-left:15px;">月份篩選：</span>
+
     <select id="monthFilter" onchange="loadRecords()"></select>
+
 </div>
+
+
 
 <div class="table-wrapper">
+
 <table>
+
     <thead>
+
         <tr>
+
             <th>日期</th>
+
             <th>時間</th>
+
             <th>收縮壓<br>(mmHg)</th>
+
             <th>舒張壓<br>(mmHg)</th>
+
             <th>心跳<br>(次/分)</th>
+
             <th>備註</th>
+
             <th>已服藥<br>(降壓安/脂利降)</th>
+
             <th>操作</th>
+
         </tr>
+
     </thead>
+
     <tbody id="records"></tbody>
+
 </table>
+
 </div>
 
+
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
+
+
 <script>
+
     const STORAGE_KEY = "bloodPressureRecords";
+
     let chartInstance = null; // 新增：用於存放圖表實體
 
+
+
     const firebaseConfig = {
+
       apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
+
       authDomain: "my-health-record-1a9f2.firebaseapp.com",
+
       databaseURL: "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app",
+
       projectId: "my-health-record-1a9f2",
+
       storageBucket: "my-health-record-1a9f2.firebasestorage.app",
+
       messagingSenderId: "884879920046",
+
       appId: "1:884879920046:web:b3a7505188d0781907163f"
+
     };
+
+
 
     firebase.initializeApp(firebaseConfig);
 
+
+
     const database = firebase.database(undefined, {
+
         experimentalForceLongPolling: true
+
     });
+
+
 
     const dbRef = database.ref("bloodPressureRecords");
 
+
+
     function verifyPassword() {
+
         const pwd = document.getElementById("authPwd").value;
+
         const msg = document.getElementById("authMsg");
+
         msg.textContent = "驗證中";
 
+
+
         database.ref("__auth_guard").set({ pwd: pwd })
+
         .then(() => database.ref("__auth_guard/verified").set(true))
+
         .then(() => {
+
             localStorage.setItem("bp_auth_ok", "1");
+
             document.getElementById("authLayer").style.display = "none";
+
             initMonthFilter(); // 新增：初始化月份下拉選單
+
             loadRecords();
+
         })
+
         .catch(() => {
+
             msg.textContent = "密碼錯誤";
+
         });
+
     }
+
+
 
     if (localStorage.getItem("bp_auth_ok") === "1") {
+
         document.getElementById("authLayer").style.display = "none";
+
         window.onload = () => {
+
             initMonthFilter();
+
             loadRecords();
+
         };
+
     }
+
+
 
     /* 新增：動態生成月份選單，預設選取當前月份 */
+
     function initMonthFilter() {
+
         const selector = document.getElementById("monthFilter");
+
         if (selector.options.length > 0) return;
 
+
+
         const now = new Date();
+
         const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+
         
+
         // 預設先加入當月，避免沒資料時空白
+
         const defaultOpt = document.createElement("option");
+
         defaultOpt.value = currentMonth;
+
         defaultOpt.textContent = currentMonth;
+
         selector.appendChild(defaultOpt);
+
     }
+
+
 
     function loadRecords() {
+
         dbRef.once("value").then(snapshot => {
+
             const data = snapshot.val() || [];
+
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
             
+
             // 更新月份清單，確保新月份會出現在選單
+
             updateMonthList(data);
+
             render(data);
+
         });
+
     }
+
+
 
     /* 新增：根據現有資料更新月份篩選選單 */
+
     function updateMonthList(data) {
+
         const selector = document.getElementById("monthFilter");
+
         const currentVal = selector.value;
+
         const months = new Set();
+
         
+
         data.forEach(r => {
+
             if (r.date) months.add(r.date.substring(0, 7));
+
         });
+
+
 
         const sortedMonths = Array.from(months).sort().reverse();
+
         selector.innerHTML = "";
+
         sortedMonths.forEach(m => {
+
             const opt = document.createElement("option");
+
             opt.value = m;
+
             opt.textContent = m;
+
             selector.appendChild(opt);
+
         });
+
         
+
         if (currentVal && Array.from(months).includes(currentVal)) {
+
             selector.value = currentVal;
+
         } else if (sortedMonths.length > 0) {
+
             selector.value = sortedMonths[0];
+
         }
+
     }
+
+
 
     function render(data) {
+
         const tbody = document.getElementById("records");
+
         tbody.innerHTML = "";
 
+
+
         const nowLocal = new Date();
+
         const yyyy = nowLocal.getFullYear();
+
         const mm = String(nowLocal.getMonth() + 1).padStart(2, '0');
+
         const dd = String(nowLocal.getDate()).padStart(2, '0');
+
         const today = `${yyyy}-${mm}-${dd}`;
+
         
+
         const filterMonth = document.getElementById("monthFilter").value;
 
+
+
         let todaySys = 0;
+
         let todayDia = 0;
+
         let todayCount = 0;
+
         let tookMedToday = false;
 
+
+
         data.forEach(r => {
+
             if (r.date === today) {
+
                 if (r.sys && r.dia) {
+
                     todaySys += Number(r.sys);
+
                     todayDia += Number(r.dia);
+
                     todayCount++;
+
                 }
+
                 if (r.tookMed) tookMedToday = true;
+
             }
+
         });
+
+
 
         if (!tookMedToday) {
+
             document.getElementById("medReminder").style.display = "block";
+
         } else {
+
             document.getElementById("medReminder").style.display = "none";
+
         }
+
+
 
         if (todayCount > 0) {
+
             document.getElementById("avgInfo").style.display = "block";
+
             document.getElementById("avgInfo").textContent =
+
                 "今日平均收縮壓：" + Math.round(todaySys / todayCount) +
+
                 "　今日平均舒張壓：" + Math.round(todayDia / todayCount);
+
         } else {
+
             document.getElementById("avgInfo").style.display = "none";
+
         }
+
+
 
         /* 修改：僅顯示符合選定月份的紀錄 */
+
         data.forEach((record, index) => {
+
             if (record.date.substring(0, 7) !== filterMonth) return;
 
+
+
             const tr = document.createElement("tr");
+
             const sysHigh = Number(record.sys) >= 140;
+
             const diaHigh = Number(record.dia) >= 90;
 
+
+
+            /* 修改：手動指定 tabindex 以確保按下 TAB 鍵時焦點依序跳轉至同一列的各輸入格 */
+
             tr.innerHTML = `
+
                 <td><input type="date" value="${record.date}" onchange="update(${index}, 'date', this.value)"></td>
+
                 <td><input type="time" value="${record.time}" onchange="update(${index}, 'time', this.value)"></td>
+
                 <td class="${sysHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)">
+
+                    <input type="number" tabindex="${(index*10)+1}" value="${record.sys}" onchange="update(${index}, 'sys', this.value)">
+
                 </td>
+
                 <td class="${diaHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
+
+                    <input type="number" tabindex="${(index*10)+2}" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
+
                 </td>
-                <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
+
+                <td><input type="number" tabindex="${(index*10)+3}" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
+
                 <td>
-                    <input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)">
+
+                    <input type="text" tabindex="${(index*10)+4}" value="${record.note}" onchange="update(${index}, 'note', this.value)">
+
                 </td>
+
                 <td>
-                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
+
+                    <input type="checkbox" tabindex="${(index*10)+5}" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
+
                 </td>
+
                 <td><button onclick="remove(${index})">刪除</button></td>
+
             `;
+
             tbody.appendChild(tr);
+
         });
+
     }
+
+
 
     /* 新增：趨勢圖顯示切換與繪製邏輯 */
+
     function toggleChart(show) {
+
         const layer = document.getElementById("chartLayer");
+
         if (!show) {
+
             layer.style.display = "none";
+
             return;
+
         }
+
         layer.style.display = "flex";
+
         
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
         // 篩選有完整血壓數據的紀錄並依日期排序
+
         const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+
         const last30 = validData.slice(-30); // 取最近30筆
 
+
+
         const ctx = document.getElementById('bpChart').getContext('2d');
+
         if (chartInstance) chartInstance.destroy();
 
+
+
         chartInstance = new Chart(ctx, {
+
             type: 'line',
+
             data: {
+
                 labels: last30.map(r => r.date.substring(5) + " " + r.time),
+
                 datasets: [
+
                     {
+
                         label: '收縮壓',
+
                         data: last30.map(r => r.sys),
+
                         borderColor: '#ff5252',
+
                         backgroundColor: '#ff5252',
+
                         fill: false,
+
                         tension: 0.1
+
                     },
+
                     {
+
                         label: '舒張壓',
+
                         data: last30.map(r => r.dia),
+
                         borderColor: '#448aff',
+
                         backgroundColor: '#448aff',
+
                         fill: false,
+
                         tension: 0.1
+
                     }
+
                 ]
+
             },
+
             options: {
+
                 responsive: true,
+
                 maintainAspectRatio: false,
+
                 scales: {
+
                     y: { min: 40, max: 200 }
+
                 }
+
             }
+
         });
+
     }
+
+
 
     function quickNote(index, text) {
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
         data[index].note = text;
+
         save(data);
+
         render(data);
+
     }
+
+
 
     function save(data) {
+
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
         dbRef.set(data);
+
         render(data);
+
     }
+
+
 
     function addRecord() {
+
         const now = new Date();
+
         const yyyy = now.getFullYear();
+
         const mm = String(now.getMonth() + 1).padStart(2, '0');
+
         const dd = String(now.getDate()).padStart(2, '0');
+
         const date = `${yyyy}-${mm}-${dd}`;
+
         const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
 
+
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
         data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
+
         
+
         // 確保新增的月份在選單中存在並選取它
+
         const newMonth = date.substring(0, 7);
+
         save(data);
+
         
+
         const selector = document.getElementById("monthFilter");
+
         updateMonthList(data);
+
         selector.value = newMonth;
+
         render(data);
+
     }
+
+
 
     function update(index, key, value) {
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
         data[index][key] = value;
+
         save(data);
+
     }
+
+
 
     function remove(index) {
+
         if (!confirm("確定要刪除這筆紀錄嗎")) return;
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
         data.splice(index, 1);
+
         save(data);
+
         render(data);
+
     }
+
+
 
     function downloadCSV() {
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
         if (!data.length) return;
 
+
+
         let csv = "日期,時間,收縮壓,舒張壓,心跳,備註,已服藥\n";
+
         data.forEach(r => {
+
             csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note},${r.tookMed ? "是" : "否"}\n`;
+
         });
 
+
+
         const bom = "\uFEFF";
+
         const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
+
         const url = URL.createObjectURL(blob);
+
         const a = document.createElement("a");
+
         a.href = url;
+
         a.download = "blood_pressure_records.csv";
+
         a.click();
+
         URL.revokeObjectURL(url);
+
     }
+
 </script>
 
+
+
 </body>
+
 </html>
-
-

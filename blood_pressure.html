@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -64,7 +64,6 @@
             font-weight: bold;
         }
 
-        /* 新增：未服藥紀錄樣式 */
         #noMedBlock {
             margin-top: 15px;
             text-align: center;
@@ -113,7 +112,6 @@
 </table>
 </div>
 
-<!-- 新增：未服藥顯示區 -->
 <div id="noMedBlock"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -141,6 +139,15 @@
     const dbRef = database.ref("bloodPressureRecords");
     const noMedRef = database.ref("bloodPressureNoMedRecords");
 
+    /* 新增：取得本地日期字串（避免 UTC 跨日錯誤） */
+    function getLocalDateString() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + d;
+    }
+
     function verifyPassword() {
         const pwd = document.getElementById("authPwd").value;
         const msg = document.getElementById("authMsg");
@@ -164,44 +171,10 @@
     }
 
     function loadRecords() {
-    // 新增：取得本地日期（避免 UTC 時區導致跨日錯誤）
-    function getLocalDateString() {
-        const d = new Date();
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-    }
         dbRef.once("value").then(snapshot => {
             const data = snapshot.val() || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             render(data);
-            checkNoMedRecord();
-        });
-    }
-
-    function getToday() {
-        return getLocalDateString();
-    }
-
-
-    function checkNoMedRecord() {
-        const today = getToday();
-        noMedRef.child(today).once("value").then(snap => {
-            const block = document.getElementById("noMedBlock");
-            if (snap.exists()) {
-                block.innerHTML =
-                    today + " 未服藥紀錄 " +
-                    "<button onclick=\"deleteNoMed('"+today+"')\">刪除</button>";
-            } else {
-                block.innerHTML = "";
-            }
-        });
-    }
-
-    function deleteNoMed(date) {
-        noMedRef.child(date).remove().then(() => {
-            document.getElementById("noMedBlock").innerHTML = "";
         });
     }
 
@@ -209,57 +182,36 @@
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
 
-        const today = getToday();
-        let todaySys = 0;
-        let todayDia = 0;
-        let todayCount = 0;
+        const today = getLocalDateString();
         let tookMedToday = false;
 
         data.forEach(r => {
-            if (r.date === today) {
-                if (r.sys && r.dia) {
-                    todaySys += Number(r.sys);
-                    todayDia += Number(r.dia);
-                    todayCount++;
-                }
-                if (r.tookMed) tookMedToday = true;
+            if (r.date === today && r.tookMed) {
+                tookMedToday = true;
             }
         });
 
         if (!tookMedToday) {
             document.getElementById("medReminder").style.display = "block";
-            noMedRef.child(today).set({ date: today, type: "no-med" });
+            noMedRef.child(today).set({ date: today });
         } else {
             document.getElementById("medReminder").style.display = "none";
             noMedRef.child(today).remove();
         }
 
-        checkNoMedRecord();
-
-        if (todayCount > 0) {
-            document.getElementById("avgInfo").style.display = "block";
-            document.getElementById("avgInfo").textContent =
-                "今日平均收縮壓：" + Math.round(todaySys / todayCount) +
-                "　今日平均舒張壓：" + Math.round(todayDia / todayCount);
-        } else {
-            document.getElementById("avgInfo").style.display = "none";
-        }
+        noMedRef.child(today).once("value").then(snap => {
+            document.getElementById("noMedBlock").innerHTML = snap.exists()
+                ? today + " 未服藥紀錄 <button onclick=\"noMedRef.child('" + today + "').remove()\">刪除</button>"
+                : "";
+        });
 
         data.forEach((record, index) => {
             const tr = document.createElement("tr");
-
-            const sysHigh = Number(record.sys) >= 140;
-            const diaHigh = Number(record.dia) >= 90;
-
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="update(${index}, 'date', this.value)"></td>
                 <td><input type="time" value="${record.time}" onchange="update(${index}, 'time', this.value)"></td>
-                <td class="${sysHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)">
-                </td>
-                <td class="${diaHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
-                </td>
+                <td><input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)"></td>
+                <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
                 <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
                 <td><input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)"></td>
@@ -280,7 +232,7 @@
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.push({
             date: getLocalDateString(),
-            time: now.toTimeString().slice(0,5),
+            time: String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0"),
             sys:"", dia:"", hr:"", note:"", tookMed:false
         });
         save(data);
@@ -300,16 +252,6 @@
     }
 
     function downloadCSV() {
-   // 新增：跨日自動偵測，確保 00:00 後自動重新計算今日狀態
-   let lastCheckedDate = getToday();
-       setInterval(() => {
-       const nowDate = getToday();
-       if (nowDate !== lastCheckedDate) {
-            lastCheckedDate = nowDate;
-            loadRecords(); // 重新計算未服藥提示與紀錄
-        }
-    }, 30000);
-
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         if (!data.length) return;
 

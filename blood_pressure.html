@@ -6,6 +6,8 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -72,6 +74,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 1000;
         }
         #authBox {
             background: white;
@@ -100,6 +103,25 @@
             padding: 2px 6px;
             font-size: 12px;
         }
+
+        /* 新增：圖表彈窗與月份選擇樣式 */
+        #chartLayer {
+            position: fixed;
+            inset: 0;
+            background: white;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 999;
+        }
+        .filter-section {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        #monthFilter {
+            padding: 5px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -113,6 +135,15 @@
     </div>
 </div>
 
+<div id="chartLayer">
+    <div style="text-align:right;">
+        <button onclick="toggleChart(false)">關閉圖表</button>
+    </div>
+    <div style="flex:1; min-height:0;">
+        <canvas id="bpChart"></canvas>
+    </div>
+</div>
+
 <div id="medReminder" style="display:none;">
     今日尚未勾選任何已服藥紀錄
 </div>
@@ -121,8 +152,13 @@
 
 <h1>血壓/用藥紀錄表</h1>
 
-<button class="add-btn" onclick="addRecord()">新增紀錄</button>
-<button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
+<div class="filter-section">
+    <button class="add-btn" onclick="addRecord()">新增紀錄</button>
+    <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
+    <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">顯示趨勢圖</button>
+    <span style="margin-left:15px;">月份篩選：</span>
+    <select id="monthFilter" onchange="loadRecords()"></select>
+</div>
 
 <div class="table-wrapper">
 <table>
@@ -147,6 +183,7 @@
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
+    let chartInstance = null; // 新增：用於存放圖表實體
 
     const firebaseConfig = {
       apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
@@ -176,6 +213,7 @@
         .then(() => {
             localStorage.setItem("bp_auth_ok", "1");
             document.getElementById("authLayer").style.display = "none";
+            initMonthFilter(); // 新增：初始化月份下拉選單
             loadRecords();
         })
         .catch(() => {
@@ -185,27 +223,75 @@
 
     if (localStorage.getItem("bp_auth_ok") === "1") {
         document.getElementById("authLayer").style.display = "none";
-        loadRecords();
+        window.onload = () => {
+            initMonthFilter();
+            loadRecords();
+        };
+    }
+
+    /* 新增：動態生成月份選單，預設選取當前月份 */
+    function initMonthFilter() {
+        const selector = document.getElementById("monthFilter");
+        if (selector.options.length > 0) return;
+
+        const now = new Date();
+        const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+        
+        // 預設先加入當月，避免沒資料時空白
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = currentMonth;
+        defaultOpt.textContent = currentMonth;
+        selector.appendChild(defaultOpt);
     }
 
     function loadRecords() {
         dbRef.once("value").then(snapshot => {
             const data = snapshot.val() || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            
+            // 更新月份清單，確保新月份會出現在選單
+            updateMonthList(data);
             render(data);
         });
+    }
+
+    /* 新增：根據現有資料更新月份篩選選單 */
+    function updateMonthList(data) {
+        const selector = document.getElementById("monthFilter");
+        const currentVal = selector.value;
+        const months = new Set();
+        
+        data.forEach(r => {
+            if (r.date) months.add(r.date.substring(0, 7));
+        });
+
+        const sortedMonths = Array.from(months).sort().reverse();
+        selector.innerHTML = "";
+        sortedMonths.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m;
+            selector.appendChild(opt);
+        });
+        
+        if (currentVal && Array.from(months).includes(currentVal)) {
+            selector.value = currentVal;
+        } else if (sortedMonths.length > 0) {
+            selector.value = sortedMonths[0];
+        }
     }
 
     function render(data) {
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
 
-        /* 修改：確保抓取本地正確日期與月份，補零處理 */
         const nowLocal = new Date();
         const yyyy = nowLocal.getFullYear();
         const mm = String(nowLocal.getMonth() + 1).padStart(2, '0');
         const dd = String(nowLocal.getDate()).padStart(2, '0');
         const today = `${yyyy}-${mm}-${dd}`;
+        
+        const filterMonth = document.getElementById("monthFilter").value;
 
         let todaySys = 0;
         let todayDia = 0;
@@ -238,9 +324,11 @@
             document.getElementById("avgInfo").style.display = "none";
         }
 
+        /* 修改：僅顯示符合選定月份的紀錄 */
         data.forEach((record, index) => {
-            const tr = document.createElement("tr");
+            if (record.date.substring(0, 7) !== filterMonth) return;
 
+            const tr = document.createElement("tr");
             const sysHigh = Number(record.sys) >= 140;
             const diaHigh = Number(record.dia) >= 90;
 
@@ -266,6 +354,56 @@
         });
     }
 
+    /* 新增：趨勢圖顯示切換與繪製邏輯 */
+    function toggleChart(show) {
+        const layer = document.getElementById("chartLayer");
+        if (!show) {
+            layer.style.display = "none";
+            return;
+        }
+        layer.style.display = "flex";
+        
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        // 篩選有完整血壓數據的紀錄並依日期排序
+        const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+        const last30 = validData.slice(-30); // 取最近30筆
+
+        const ctx = document.getElementById('bpChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: last30.map(r => r.date.substring(5) + " " + r.time),
+                datasets: [
+                    {
+                        label: '收縮壓',
+                        data: last30.map(r => r.sys),
+                        borderColor: '#ff5252',
+                        backgroundColor: '#ff5252',
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: '舒張壓',
+                        data: last30.map(r => r.dia),
+                        borderColor: '#448aff',
+                        backgroundColor: '#448aff',
+                        fill: false,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { min: 40, max: 200 }
+                }
+            }
+        });
+    }
+
     function quickNote(index, text) {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data[index].note = text;
@@ -276,12 +414,10 @@
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
-        /* 新增：儲存後立即重新渲染，確保服藥提醒狀態同步更新 */
         render(data);
     }
 
     function addRecord() {
-        /* 修改：使用本地時間物件取得正確日期與時間，修正凌晨日期偏移問題 */
         const now = new Date();
         const yyyy = now.getFullYear();
         const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -291,7 +427,14 @@
 
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
+        
+        // 確保新增的月份在選單中存在並選取它
+        const newMonth = date.substring(0, 7);
         save(data);
+        
+        const selector = document.getElementById("monthFilter");
+        updateMonthList(data);
+        selector.value = newMonth;
         render(data);
     }
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -81,6 +81,26 @@
             width: 300px;
             text-align: center;
         }
+
+        /* 新增：高血壓顯示樣式（僅影響顯示） */
+        .bp-high {
+            background-color: #ffe5e5;
+        }
+
+        /* 新增：提醒文字樣式 */
+        #medReminder, #avgInfo {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #a00;
+            font-weight: bold;
+        }
+
+        /* 新增：備註快速選單按鈕 */
+        .note-btn {
+            margin: 2px;
+            padding: 2px 6px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -94,6 +114,14 @@
         <div id="authMsg"></div>
     </div>
 </div>
+
+<!-- 新增：每日服藥提醒 -->
+<div id="medReminder" style="display:none;">
+    今日尚未勾選任何已服藥紀錄
+</div>
+
+<!-- 新增：今日平均血壓顯示 -->
+<div id="avgInfo" style="display:none;"></div>
 
 <h1>血壓/用藥紀錄表</h1>
 
@@ -120,14 +148,12 @@
 </table>
 </div>
 
-<!-- Firebase v9 相容版本 -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
 
-    /* Firebase 設定 */
     const firebaseConfig = {
       apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
       authDomain: "my-health-record-1a9f2.firebaseapp.com",
@@ -146,7 +172,6 @@
 
     const dbRef = database.ref("bloodPressureRecords");
 
-    /* 新增：密碼驗證（透過 Rules） */
     function verifyPassword() {
         const pwd = document.getElementById("authPwd").value;
         const msg = document.getElementById("authMsg");
@@ -164,7 +189,6 @@
         });
     }
 
-    /* 啟動時：如果本機已驗證，直接載入 */
     if (localStorage.getItem("bp_auth_ok") === "1") {
         document.getElementById("authLayer").style.display = "none";
         loadRecords();
@@ -182,16 +206,62 @@
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
 
+        const today = new Date().toISOString().slice(0,10);
+        let todaySys = 0;
+        let todayDia = 0;
+        let todayCount = 0;
+        let tookMedToday = false;
+
+        data.forEach(r => {
+            if (r.date === today) {
+                if (r.sys && r.dia) {
+                    todaySys += Number(r.sys);
+                    todayDia += Number(r.dia);
+                    todayCount++;
+                }
+                if (r.tookMed) tookMedToday = true;
+            }
+        });
+
+        if (!tookMedToday) {
+            document.getElementById("medReminder").style.display = "block";
+        } else {
+            document.getElementById("medReminder").style.display = "none";
+        }
+
+        if (todayCount > 0) {
+            document.getElementById("avgInfo").style.display = "block";
+            document.getElementById("avgInfo").textContent =
+                "今日平均收縮壓：" + Math.round(todaySys / todayCount) +
+                "　今日平均舒張壓：" + Math.round(todayDia / todayCount);
+        } else {
+            document.getElementById("avgInfo").style.display = "none";
+        }
+
         data.forEach((record, index) => {
             const tr = document.createElement("tr");
+
+            const sysHigh = Number(record.sys) >= 140;
+            const diaHigh = Number(record.dia) >= 90;
+
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="update(${index}, 'date', this.value)"></td>
                 <td><input type="time" value="${record.time}" onchange="update(${index}, 'time', this.value)"></td>
-                <td><input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)"></td>
-                <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
+                <td class="${sysHigh ? "bp-high" : ""}">
+                    <input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)">
+                </td>
+                <td class="${diaHigh ? "bp-high" : ""}">
+                    <input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
+                </td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
-                <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
-                <!-- 新增：服藥確認勾選框 -->
+                <td>
+                    <input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)">
+                    <div>
+                        <button class="note-btn" onclick="quickNote(${index}, '睡眠不足')">睡眠不足</button>
+                        <button class="note-btn" onclick="quickNote(${index}, '壓力大')">壓力大</button>
+                        <button class="note-btn" onclick="quickNote(${index}, '運動後')">運動後</button>
+                    </div>
+                </td>
                 <td>
                     <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
                 </td>
@@ -201,19 +271,24 @@
         });
     }
 
+    function quickNote(index, text) {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        data[index].note = text;
+        save(data);
+        render(data);
+    }
+
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
     }
 
-    /* 新增：新增紀錄時自動帶入目前日期與時間 */
     function addRecord() {
         const now = new Date();
         const date = now.toISOString().slice(0,10);
         const time = now.toTimeString().slice(0,5);
 
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        /* 新增：tookMed 預設為 false */
         data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
         save(data);
         render(data);
@@ -225,7 +300,6 @@
         save(data);
     }
 
-    /* 新增：刪除前確認提示 */
     function remove(index) {
         if (!confirm("確定要刪除這筆紀錄嗎")) return;
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -234,7 +308,6 @@
         render(data);
     }
 
-    /* 新增：下載紀錄為 CSV，加入 UTF-8 BOM 以避免 Excel 亂碼 */
     function downloadCSV() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         if (!data.length) return;
@@ -257,7 +330,3 @@
 
 </body>
 </html>
-
-
-
-

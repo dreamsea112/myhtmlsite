@@ -256,11 +256,6 @@
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
                 <td>
                     <input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)">
-                    <div>
-                        <button class="note-btn" onclick="quickNote(${index}, '睡眠不足')">睡眠不足</button>
-                        <button class="note-btn" onclick="quickNote(${index}, '壓力大')">壓力大</button>
-                        <button class="note-btn" onclick="quickNote(${index}, '運動後')">運動後</button>
-                    </div>
                 </td>
                 <td>
                     <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
@@ -330,3 +325,4 @@
 
 </body>
 </html>
+

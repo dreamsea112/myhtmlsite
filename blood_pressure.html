@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -164,6 +164,14 @@
     }
 
     function loadRecords() {
+    // 新增：取得本地日期（避免 UTC 時區導致跨日錯誤）
+    function getLocalDateString() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    }
         dbRef.once("value").then(snapshot => {
             const data = snapshot.val() || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -173,8 +181,9 @@
     }
 
     function getToday() {
-        return new Date().toISOString().slice(0,10);
+        return getLocalDateString();
     }
+
 
     function checkNoMedRecord() {
         const today = getToday();
@@ -270,7 +279,7 @@
         const now = new Date();
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.push({
-            date: now.toISOString().slice(0,10),
+            date: getLocalDateString(),
             time: now.toTimeString().slice(0,5),
             sys:"", dia:"", hr:"", note:"", tookMed:false
         });
@@ -291,6 +300,16 @@
     }
 
     function downloadCSV() {
+   // 新增：跨日自動偵測，確保 00:00 後自動重新計算今日狀態
+   let lastCheckedDate = getToday();
+       setInterval(() => {
+       const nowDate = getToday();
+       if (nowDate !== lastCheckedDate) {
+            lastCheckedDate = nowDate;
+            loadRecords(); // 重新計算未服藥提示與紀錄
+        }
+    }, 30000);
+
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         if (!data.length) return;
 

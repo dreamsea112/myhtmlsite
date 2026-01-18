@@ -105,7 +105,6 @@
 </head>
 <body>
 
-<!-- 新增：密碼驗證區塊 -->
 <div id="authLayer">
     <div id="authBox">
         <h3>請輸入密碼</h3>
@@ -115,12 +114,10 @@
     </div>
 </div>
 
-<!-- 新增：每日服藥提醒 -->
 <div id="medReminder" style="display:none;">
     今日尚未勾選任何已服藥紀錄
 </div>
 
-<!-- 新增：今日平均血壓顯示 -->
 <div id="avgInfo" style="display:none;"></div>
 
 <h1>血壓/用藥紀錄表</h1>
@@ -128,7 +125,6 @@
 <button class="add-btn" onclick="addRecord()">新增紀錄</button>
 <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
 
-<!-- 新增：表格包覆容器 -->
 <div class="table-wrapper">
 <table>
     <thead>
@@ -139,7 +135,6 @@
             <th>舒張壓<br>(mmHg)</th>
             <th>心跳<br>(次/分)</th>
             <th>備註</th>
-            <!-- 新增：服藥確認欄位 -->
             <th>已服藥<br>(降壓安/脂利降)</th>
             <th>操作</th>
         </tr>
@@ -154,7 +149,16 @@
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
 
-    const firebaseConfig = {
+    /* 新增：取得台灣本地日期字串（避免 UTC 時區錯誤） */
+    function getLocalDateString() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    }
+
+    firebase.initializeApp({
       apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
       authDomain: "my-health-record-1a9f2.firebaseapp.com",
       databaseURL: "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -162,37 +166,10 @@
       storageBucket: "my-health-record-1a9f2.firebasestorage.app",
       messagingSenderId: "884879920046",
       appId: "1:884879920046:web:b3a7505188d0781907163f"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-
-    const database = firebase.database(undefined, {
-        experimentalForceLongPolling: true
     });
 
+    const database = firebase.database(undefined, { experimentalForceLongPolling: true });
     const dbRef = database.ref("bloodPressureRecords");
-
-    function verifyPassword() {
-        const pwd = document.getElementById("authPwd").value;
-        const msg = document.getElementById("authMsg");
-        msg.textContent = "驗證中";
-
-        database.ref("__auth_guard").set({ pwd: pwd })
-        .then(() => database.ref("__auth_guard/verified").set(true))
-        .then(() => {
-            localStorage.setItem("bp_auth_ok", "1");
-            document.getElementById("authLayer").style.display = "none";
-            loadRecords();
-        })
-        .catch(() => {
-            msg.textContent = "密碼錯誤";
-        });
-    }
-
-    if (localStorage.getItem("bp_auth_ok") === "1") {
-        document.getElementById("authLayer").style.display = "none";
-        loadRecords();
-    }
 
     function loadRecords() {
         dbRef.once("value").then(snapshot => {
@@ -206,69 +183,37 @@
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
 
-        const today = new Date().toISOString().slice(0,10);
-        let todaySys = 0;
-        let todayDia = 0;
-        let todayCount = 0;
+        const today = getLocalDateString();
         let tookMedToday = false;
 
         data.forEach(r => {
-            if (r.date === today) {
-                if (r.sys && r.dia) {
-                    todaySys += Number(r.sys);
-                    todayDia += Number(r.dia);
-                    todayCount++;
-                }
-                if (r.tookMed) tookMedToday = true;
-            }
+            if (r.date === today && r.tookMed) tookMedToday = true;
         });
 
-        if (!tookMedToday) {
-            document.getElementById("medReminder").style.display = "block";
-        } else {
-            document.getElementById("medReminder").style.display = "none";
-        }
-
-        if (todayCount > 0) {
-            document.getElementById("avgInfo").style.display = "block";
-            document.getElementById("avgInfo").textContent =
-                "今日平均收縮壓：" + Math.round(todaySys / todayCount) +
-                "　今日平均舒張壓：" + Math.round(todayDia / todayCount);
-        } else {
-            document.getElementById("avgInfo").style.display = "none";
-        }
+        document.getElementById("medReminder").style.display = tookMedToday ? "none" : "block";
 
         data.forEach((record, index) => {
             const tr = document.createElement("tr");
-
-            const sysHigh = Number(record.sys) >= 140;
-            const diaHigh = Number(record.dia) >= 90;
-
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="update(${index}, 'date', this.value)"></td>
                 <td><input type="time" value="${record.time}" onchange="update(${index}, 'time', this.value)"></td>
-                <td class="${sysHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)">
-                </td>
-                <td class="${diaHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
-                </td>
+                <td><input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)"></td>
+                <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
-                <td>
-                    <input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)">
-                </td>
-                <td>
-                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
-                </td>
+                <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
+                <td><input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)"></td>
                 <td><button onclick="remove(${index})">刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    function quickNote(index, text) {
+    function addRecord() {
+        const now = new Date();
+        const date = getLocalDateString();
+        const time = now.toTimeString().slice(0,5);
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data[index].note = text;
+        data.push({ date, time, sys:"", dia:"", hr:"", note:"", tookMed:false });
         save(data);
         render(data);
     }
@@ -278,21 +223,11 @@
         dbRef.set(data);
     }
 
-    function addRecord() {
-        const now = new Date();
-        const date = now.toISOString().slice(0,10);
-        const time = now.toTimeString().slice(0,5);
-
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
-        save(data);
-        render(data);
-    }
-
     function update(index, key, value) {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data[index][key] = value;
         save(data);
+        render(data);
     }
 
     function remove(index) {
@@ -303,24 +238,18 @@
         render(data);
     }
 
-    function downloadCSV() {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        if (!data.length) return;
-
-        let csv = "日期,時間,收縮壓,舒張壓,心跳,備註,已服藥\n";
-        data.forEach(r => {
-            csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note},${r.tookMed ? "是" : "否"}\n`;
-        });
-
-        const bom = "\uFEFF";
-        const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "blood_pressure_records.csv";
-        a.click();
-        URL.revokeObjectURL(url);
+    /* 新增：每日 00:00 自動重新計算新的一天 */
+    function scheduleMidnightRefresh() {
+        const now = new Date();
+        const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+        setTimeout(() => {
+            render(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []);
+            scheduleMidnightRefresh();
+        }, next - now);
     }
+
+    scheduleMidnightRefresh();
+    loadRecords();
 </script>
 
 </body>

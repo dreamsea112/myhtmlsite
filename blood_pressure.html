@@ -27,7 +27,7 @@
             border-collapse: collapse;
             background: white;
             /* 新增：避免表格被壓到不可閱讀 */
-            min-width: 900px;
+            min-width: 980px;
         }
         th, td {
             border: 1px solid #ccc;
@@ -50,6 +50,11 @@
         /* 新增：確保備註欄位在手機上可正常輸入與閱讀 */
         th:nth-child(6), td:nth-child(6) {
             min-width: 160px;
+        }
+
+        /* 新增：已服藥欄位的最小寬度 */
+        th:nth-child(7), td:nth-child(7) {
+            min-width: 90px;
         }
 
         button {
@@ -106,6 +111,8 @@
             <th>舒張壓<br>(mmHg)</th>
             <th>心跳<br>(次/分)</th>
             <th>備註</th>
+            <!-- 新增：服藥確認欄位 -->
+            <th>已服藥</th>
             <th>操作</th>
         </tr>
     </thead>
@@ -184,6 +191,10 @@
                 <td><input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)"></td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
                 <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
+                <!-- 新增：服藥確認勾選框 -->
+                <td>
+                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
+                </td>
                 <td><button onclick="remove(${index})">刪除</button></td>
             `;
             tbody.appendChild(tr);
@@ -202,7 +213,8 @@
         const time = now.toTimeString().slice(0,5);
 
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"" });
+        /* 新增：tookMed 預設為 false */
+        data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
         save(data);
         render(data);
     }
@@ -227,9 +239,9 @@
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         if (!data.length) return;
 
-        let csv = "日期,時間,收縮壓,舒張壓,心跳,備註\n";
+        let csv = "日期,時間,收縮壓,舒張壓,心跳,備註,已服藥\n";
         data.forEach(r => {
-            csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note}\n`;
+            csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note},${r.tookMed ? "是" : "否"}\n`;
         });
 
         const bom = "\uFEFF";

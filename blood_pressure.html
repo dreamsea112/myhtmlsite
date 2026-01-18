@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>血壓/用藥紀錄表</title>
 
-    <!-- 新增：行動裝置自動縮放，不影響電腦 -->
+    <!-- 行動裝置自動縮放 -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
@@ -13,13 +13,9 @@
             padding: 20px;
             background: #f5f5f5;
         }
-        h1 {
-            text-align: center;
-        }
+        h1 { text-align: center; }
 
-        .table-wrapper {
-            overflow-x: auto;
-        }
+        .table-wrapper { overflow-x: auto; }
 
         table {
             width: 100%;
@@ -32,31 +28,16 @@
             padding: 8px;
             text-align: center;
         }
-        th {
-            background: #eee;
-        }
-        input {
-            width: 100%;
-            box-sizing: border-box;
-        }
+        th { background: #eee; }
 
-        th:nth-child(5), td:nth-child(5) {
-            min-width: 90px;
-        }
-        th:nth-child(6), td:nth-child(6) {
-            min-width: 160px;
-        }
-        th:nth-child(7), td:nth-child(7) {
-            min-width: 90px;
-        }
+        input { width: 100%; box-sizing: border-box; }
 
-        button {
-            padding: 6px 10px;
-            cursor: pointer;
-        }
-        .add-btn {
-            margin-bottom: 10px;
-        }
+        th:nth-child(5), td:nth-child(5) { min-width: 90px; }
+        th:nth-child(6), td:nth-child(6) { min-width: 160px; }
+        th:nth-child(7), td:nth-child(7) { min-width: 90px; }
+
+        button { padding: 6px 10px; cursor: pointer; }
+        .add-btn { margin-bottom: 10px; }
 
         #authLayer {
             position: fixed;
@@ -74,9 +55,7 @@
             text-align: center;
         }
 
-        .bp-high {
-            background-color: #ffe5e5;
-        }
+        .bp-high { background-color: #ffe5e5; }
 
         #medReminder, #avgInfo {
             margin-bottom: 10px;
@@ -85,11 +64,11 @@
             font-weight: bold;
         }
 
-        /* 新增：未服藥歷史紀錄顯示樣式 */
-        #missedMedLog {
-            margin-top: 10px;
+        /* 新增：未服藥紀錄樣式 */
+        #noMedBlock {
+            margin-top: 15px;
             text-align: center;
-            color: #a00;
+            color: red;
             font-weight: bold;
         }
     </style>
@@ -111,9 +90,6 @@
 
 <div id="avgInfo" style="display:none;"></div>
 
-<!-- 新增：未服藥日期紀錄顯示區塊 -->
-<div id="missedMedLog"></div>
-
 <h1>血壓/用藥紀錄表</h1>
 
 <button class="add-btn" onclick="addRecord()">新增紀錄</button>
@@ -125,11 +101,11 @@
         <tr>
             <th>日期</th>
             <th>時間</th>
-            <th>收縮壓<br>(mmHg)</th>
-            <th>舒張壓<br>(mmHg)</th>
-            <th>心跳<br>(次/分)</th>
+            <th>收縮壓</th>
+            <th>舒張壓</th>
+            <th>心跳</th>
             <th>備註</th>
-            <th>已服藥<br>(降壓安/脂利降)</th>
+            <th>已服藥</th>
             <th>操作</th>
         </tr>
     </thead>
@@ -137,12 +113,14 @@
 </table>
 </div>
 
+<!-- 新增：未服藥顯示區 -->
+<div id="noMedBlock"></div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
-    const MISSED_KEY = "missedMedicationDates";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
@@ -161,6 +139,7 @@
     });
 
     const dbRef = database.ref("bloodPressureRecords");
+    const noMedRef = database.ref("bloodPressureNoMedRecords");
 
     function verifyPassword() {
         const pwd = document.getElementById("authPwd").value;
@@ -189,6 +168,31 @@
             const data = snapshot.val() || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             render(data);
+            checkNoMedRecord();
+        });
+    }
+
+    function getToday() {
+        return new Date().toISOString().slice(0,10);
+    }
+
+    function checkNoMedRecord() {
+        const today = getToday();
+        noMedRef.child(today).once("value").then(snap => {
+            const block = document.getElementById("noMedBlock");
+            if (snap.exists()) {
+                block.innerHTML =
+                    today + " 未服藥紀錄 " +
+                    "<button onclick=\"deleteNoMed('"+today+"')\">刪除</button>";
+            } else {
+                block.innerHTML = "";
+            }
+        });
+    }
+
+    function deleteNoMed(date) {
+        noMedRef.child(date).remove().then(() => {
+            document.getElementById("noMedBlock").innerHTML = "";
         });
     }
 
@@ -196,7 +200,7 @@
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
 
-        const today = new Date().toISOString().slice(0,10);
+        const today = getToday();
         let todaySys = 0;
         let todayDia = 0;
         let todayCount = 0;
@@ -213,9 +217,15 @@
             }
         });
 
-        /* 新增：每日 00:00 起算的服藥提醒判斷 */
-        document.getElementById("medReminder").style.display =
-            tookMedToday ? "none" : "block";
+        if (!tookMedToday) {
+            document.getElementById("medReminder").style.display = "block";
+            noMedRef.child(today).set({ date: today, type: "no-med" });
+        } else {
+            document.getElementById("medReminder").style.display = "none";
+            noMedRef.child(today).remove();
+        }
+
+        checkNoMedRecord();
 
         if (todayCount > 0) {
             document.getElementById("avgInfo").style.display = "block";
@@ -225,24 +235,6 @@
         } else {
             document.getElementById("avgInfo").style.display = "none";
         }
-
-        /* 新增：記錄完整過去日期未服藥狀態 */
-        const missed = JSON.parse(localStorage.getItem(MISSED_KEY)) || [];
-
-        const dates = [...new Set(data.map(r => r.date))];
-        dates.forEach(d => {
-            if (d < today) {
-                const hasMed = data.some(r => r.date === d && r.tookMed);
-                if (!hasMed && !missed.includes(d)) {
-                    missed.push(d);
-                }
-            }
-        });
-
-        localStorage.setItem(MISSED_KEY, JSON.stringify(missed));
-
-        document.getElementById("missedMedLog").innerHTML =
-            missed.map(d => d + " 未服藥").join("<br>");
 
         data.forEach((record, index) => {
             const tr = document.createElement("tr");
@@ -260,12 +252,8 @@
                     <input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
                 </td>
                 <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
-                <td>
-                    <input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)">
-                </td>
-                <td>
-                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
-                </td>
+                <td><input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)"></td>
+                <td><input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)"></td>
                 <td><button onclick="remove(${index})">刪除</button></td>
             `;
             tbody.appendChild(tr);
@@ -275,24 +263,24 @@
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
+        render(data);
     }
 
     function addRecord() {
         const now = new Date();
-        const date = now.toISOString().slice(0,10);
-        const time = now.toTimeString().slice(0,5);
-
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
+        data.push({
+            date: now.toISOString().slice(0,10),
+            time: now.toTimeString().slice(0,5),
+            sys:"", dia:"", hr:"", note:"", tookMed:false
+        });
         save(data);
-        render(data);
     }
 
     function update(index, key, value) {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data[index][key] = value;
         save(data);
-        render(data);
     }
 
     function remove(index) {
@@ -300,7 +288,6 @@
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.splice(index, 1);
         save(data);
-        render(data);
     }
 
     function downloadCSV() {

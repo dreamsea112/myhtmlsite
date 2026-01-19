@@ -166,6 +166,8 @@
             justify-content: center;
             position: relative;
             background: #fff;
+            cursor: default; /* 修改：由 help 改為 default，移除問號鼠標 */
+            box-sizing: border-box; /* 新增：確保框線包含在寬高內，防止底線消失 */
         }
         .cal-date-num {
             font-size: 1.1em;
@@ -206,7 +208,7 @@
     </div>
     <div id="calGrid" class="cal-grid"></div>
     <div style="text-align:center; margin-top:20px; color:#666; font-size:14px;">
-        註：粉紅色代表該日有血壓超標紀錄
+        註：粉紅色代表該日有血壓超標紀錄，滑鼠指向日期可顯示當日數值
     </div>
 </div>
 
@@ -555,13 +557,25 @@
             
             const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
             
+            // 新增：搜尋該日期的所有紀錄以供滑鼠指向顯示
+            const dayRecords = data.filter(r => r.date === dateStr && r.sys && r.dia);
+
             // 檢查該日期是否有超標紀錄
-            const hasHighBP = data.some(r => {
-                return r.date === dateStr && (Number(r.sys) >= 140 || Number(r.dia) >= 90);
+            const hasHighBP = dayRecords.some(r => {
+                return (Number(r.sys) >= 140 || Number(r.dia) >= 90);
             });
 
             if (hasHighBP) {
                 cell.classList.add("bp-high");
+            }
+
+            // 新增：如果當日有資料，設定 title 屬性實現滑鼠指向顯示功能
+            if (dayRecords.length > 0) {
+                let tooltipText = "";
+                dayRecords.forEach(r => {
+                    tooltipText += `時間：${r.time} 收縮壓：${r.sys} 舒張壓：${r.dia}\n`;
+                });
+                cell.title = tooltipText.trim();
             }
 
             cell.innerHTML = `<span class="cal-date-num">${d}</span>`;

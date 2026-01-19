@@ -12,15 +12,17 @@
         /* 深色模式全域設定 */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
-            padding: 20px;
+            padding: 10px; /* 縮小全域邊距以適應手機螢幕 */
             background: #121212; /* 質感深黑底色 */
             color: #e0e0e0; /* 亮白色文字 */
+            font-size: 16px; /* 提升基礎字體大小，避免手機閱讀吃力 */
         }
         h1 {
             text-align: center;
             color: #ffffff;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             font-weight: 300;
+            font-size: 1.4em;
         }
 
         /* 允許表格在行動裝置橫向捲動 */
@@ -39,24 +41,27 @@
         }
         th, td {
             border: 1px solid #333333;
-            padding: 12px 8px;
+            padding: 4px 2px; /* 修改項目：大幅縮減上下間距(標示1與2)，原12px */
             text-align: center;
         }
         th {
             background: #2c2c2c;
             color: #ffffff;
             font-weight: 500;
+            font-size: 15px;
+            padding: 8px 2px; /* 表頭稍微保留一點高度以維持專業感 */
         }
         
         /* 輸入框樣式調整 */
         input {
-            width: 100%;
+            width: 96%;
             box-sizing: border-box;
             background: #2c2c2c;
             border: 1px solid #444;
             color: #ffffff;
-            padding: 6px;
+            padding: 8px 4px; /* 修改項目：調整填充讓輸入框高度適中且文字清晰 */
             border-radius: 4px;
+            font-size: 16px; /* 確保輸入時手機瀏覽器不會因字體太小而自動放大頁面 */
         }
         input:focus {
             outline: none;
@@ -64,20 +69,27 @@
             background: #333;
         }
 
-        /* 欄位最小寬度設定 */
-        th:nth-child(5), td:nth-child(5) { min-width: 90px; }
+        /* 欄位寬度微調優化(對應圖片需求) */
+        /* 縮小數值欄位(收縮壓、舒張壓、心跳)的輸入框感官寬度 */
+        td:nth-child(3) input, td:nth-child(4) input, td:nth-child(5) input {
+            max-width: 80px; 
+        }
+
+        /* 欄位最小寬度限制 */
+        th:nth-child(5), td:nth-child(5) { min-width: 70px; }
         th:nth-child(6), td:nth-child(6) { min-width: 160px; }
-        th:nth-child(7), td:nth-child(7) { min-width: 90px; }
+        th:nth-child(7), td:nth-child(7) { min-width: 80px; }
 
         /* 按鈕視覺優化 */
         button {
-            padding: 8px 16px;
+            padding: 6px 12px;
             cursor: pointer;
             border-radius: 6px;
             border: none;
             background: #333;
             color: #eee;
             transition: all 0.3s;
+            font-size: 14px;
         }
         button:hover {
             background: #444;
@@ -113,10 +125,10 @@
         }
 
         /* 高血壓顯示樣式(修改為金色質感配色) */
-        /* 修改項目：將底色改為金色，文字改為深色，且首頁僅限輸入框內變色 */
+        /* 修改項目：將底色改為金色，文字改為白色/深色，且僅限輸入框變色 */
         .bp-high-box {
             background-color: #B8860B !important; /* 經典金色 */
-            color: #FFFFFF !important; /* 深黑色文字以利閱讀 */
+            color: #FFFFFF !important; 
             border-color: #FFFFFF !important;
         }
         
@@ -126,7 +138,7 @@
             border: 1px solid #FFFFFF !important;
         }
         .cal-high .cal-date-num {
-            color: #FFFFFF !important; /* 金底配黑字 */
+            color: #FFFFFF !important;
             font-weight: bold;
         }
 
@@ -286,7 +298,7 @@
     <button class="add-btn btn-download" onclick="downloadCSV()">下載紀錄</button>
     <button class="add-btn btn-chart" onclick="toggleChart(true)">顯示趨勢圖</button>
     <button class="add-btn btn-calendar" onclick="toggleCalendar(true)">顯示月曆檢視</button>
-    <span style="margin-left:15px; color:#bbb;">月份篩選：</span>
+    <br style="display:block; margin:5px 0;"> <span style="margin-left:10px; color:#bbb;">月份篩選：</span>
     <select id="monthFilter" onchange="loadRecords()"></select>
 </div>
 
@@ -471,7 +483,6 @@
             const sysHigh = record.sys !== "" && Number(record.sys) >= 140;
             const diaHigh = record.dia !== "" && Number(record.dia) >= 90;
 
-            /* 修改項目：將變色 class 套用在 input 上而非 td 上 */
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
                 <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
@@ -600,7 +611,6 @@
             const dayRecords = data.filter(r => r.date === dateStr && r.sys && r.dia);
             const hasHighBP = dayRecords.some(r => (Number(r.sys) >= 140 || Number(r.dia) >= 90));
 
-            /* 修改項目：月曆超標使用金色質感樣式 */
             if (hasHighBP) cell.classList.add("cal-high");
 
             if (dayRecords.length > 0) {

@@ -281,6 +281,15 @@
         }
     }
 
+    /* 新增：靜默儲存函式 - 關鍵：儲存但不重新渲染，保護輸入焦點 */
+    function updateSilent(index, key, value) {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        data[index][key] = value;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        dbRef.set(data);
+        // 此處不呼叫 render()，避免 HTML 元素重設導致 Tab 跳轉失效
+    }
+
     function render(data) {
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
@@ -324,7 +333,7 @@
             document.getElementById("avgInfo").style.display = "none";
         }
 
-        /* 修改：僅顯示符合選定月份的紀錄 */
+        /* 修改：使用 updateSilent 進行即時儲存 */
         data.forEach((record, index) => {
             if (record.date.substring(0, 7) !== filterMonth) return;
 
@@ -333,20 +342,20 @@
             const diaHigh = Number(record.dia) >= 90;
 
             tr.innerHTML = `
-                <td><input type="date" value="${record.date}" onchange="update(${index}, 'date', this.value)"></td>
-                <td><input type="time" value="${record.time}" onchange="update(${index}, 'time', this.value)"></td>
+                <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value)"></td>
+                <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value)"></td>
                 <td class="${sysHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.sys}" onchange="update(${index}, 'sys', this.value)">
+                    <input type="number" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value)">
                 </td>
                 <td class="${diaHigh ? "bp-high" : ""}">
-                    <input type="number" value="${record.dia}" onchange="update(${index}, 'dia', this.value)">
+                    <input type="number" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value)">
                 </td>
-                <td><input type="number" value="${record.hr}" onchange="update(${index}, 'hr', this.value)"></td>
+                <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value)"></td>
                 <td>
-                    <input type="text" value="${record.note}" onchange="update(${index}, 'note', this.value)">
+                    <input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value)">
                 </td>
                 <td>
-                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="update(${index}, 'tookMed', this.checked)">
+                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked)">
                 </td>
                 <td><button onclick="remove(${index})">刪除</button></td>
             `;
@@ -414,7 +423,7 @@
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
-        render(data);
+        // 僅在全域儲存時 render
     }
 
     function addRecord() {
@@ -436,12 +445,6 @@
         updateMonthList(data);
         selector.value = newMonth;
         render(data);
-    }
-
-    function update(index, key, value) {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data[index][key] = value;
-        save(data);
     }
 
     function remove(index) {
@@ -474,4 +477,3 @@
 
 </body>
 </html>
-

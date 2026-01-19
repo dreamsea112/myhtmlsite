@@ -86,7 +86,7 @@
 
         /* 新增：高血壓顯示樣式（僅影響顯示） */
         .bp-high {
-            background-color: #ffe5e5;
+            background-color: #ffe5e5 !important;
         }
 
         /* 新增：提醒文字樣式 */
@@ -122,6 +122,54 @@
             padding: 5px;
             font-size: 16px;
         }
+
+        /* 新增：月曆彈窗樣式區塊 */
+        #calendarLayer {
+            position: fixed;
+            inset: 0;
+            background: white;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 998;
+            overflow-y: auto;
+        }
+        .cal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto 20px auto;
+            width: 100%;
+        }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .cal-day-name {
+            text-align: center;
+            font-weight: bold;
+            background: #eee;
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+        .cal-date-cell {
+            aspect-ratio: 1 / 1;
+            border: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #fff;
+        }
+        .cal-date-num {
+            font-size: 1.1em;
+        }
     </style>
 </head>
 <body>
@@ -139,8 +187,26 @@
     <div style="text-align:right;">
         <button onclick="toggleChart(false)">關閉圖表</button>
     </div>
+    <div style="text-align:center; margin-bottom:10px;">
+        <h2 style="font-size:24px; margin:0;">最近30筆趨勢圖</h2>
+    </div>
     <div style="flex:1; min-height:0;">
         <canvas id="bpChart"></canvas>
+    </div>
+</div>
+
+<div id="calendarLayer">
+    <div style="text-align:right;">
+        <button onclick="toggleCalendar(false)">關閉月曆</button>
+    </div>
+    <div class="cal-header">
+        <button onclick="changeCalMonth(-1)">上個月</button>
+        <h2 id="calTitle">2024-01</h2>
+        <button onclick="changeCalMonth(1)">下個月</button>
+    </div>
+    <div id="calGrid" class="cal-grid"></div>
+    <div style="text-align:center; margin-top:20px; color:#666; font-size:14px;">
+        註：粉紅色代表該日有血壓超標紀錄
     </div>
 </div>
 
@@ -156,6 +222,7 @@
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
     <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
     <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">顯示趨勢圖</button>
+    <button class="add-btn" style="background-color:#f1f8e9;" onclick="toggleCalendar(true)">顯示月曆檢視</button>
     <span style="margin-left:15px;">月份篩選：</span>
     <select id="monthFilter" onchange="loadRecords()"></select>
 </div>
@@ -184,6 +251,8 @@
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
     let chartInstance = null; // 新增：用於存放圖表實體
+    // 新增：月曆當前顯示的年月變數
+    let calViewDate = new Date();
 
     const firebaseConfig = {
       apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
@@ -290,16 +359,18 @@
         dbRef.set(data);
         // 此處不呼叫 render()，避免 HTML 元素重設導致 Tab 跳轉失效
 
-        // 新增：即時變色邏輯（不透過渲染，直接操作 DOM 類別）
+        // 新增：修正後的即時變色邏輯（直接操作 td 元素）
         if (inputElement && (key === 'sys' || key === 'dia')) {
             const val = Number(value);
-            const parentTd = inputElement.parentElement;
-            const threshold = (key === 'sys') ? 140 : 90;
-            
-            if (val >= threshold) {
-                parentTd.classList.add("bp-high");
-            } else {
-                parentTd.classList.remove("bp-high");
+            // 透過 input 找到外層的 td 標籤
+            const parentTd = inputElement.closest('td');
+            if (parentTd) {
+                const threshold = (key === 'sys') ? 140 : 90;
+                if (value !== "" && val >= threshold) {
+                    parentTd.classList.add("bp-high");
+                } else {
+                    parentTd.classList.remove("bp-high");
+                }
             }
         }
     }
@@ -353,8 +424,8 @@
             if (record.date.substring(0, 7) !== filterMonth) return;
 
             const tr = document.createElement("tr");
-            const sysHigh = Number(record.sys) >= 140;
-            const diaHigh = Number(record.dia) >= 90;
+            const sysHigh = record.sys !== "" && Number(record.sys) >= 140;
+            const diaHigh = record.dia !== "" && Number(record.dia) >= 90;
 
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
@@ -426,6 +497,76 @@
                 }
             }
         });
+    }
+
+    /* 新增：月曆顯示切換與生成邏輯 */
+    function toggleCalendar(show) {
+        const layer = document.getElementById("calendarLayer");
+        if (!show) {
+            layer.style.display = "none";
+            return;
+        }
+        layer.style.display = "flex";
+        renderCalendar();
+    }
+
+    /* 新增：月曆月份切換函式 */
+    function changeCalMonth(offset) {
+        calViewDate.setMonth(calViewDate.getMonth() + offset);
+        renderCalendar();
+    }
+
+    /* 新增：月曆核心渲染函式 */
+    function renderCalendar() {
+        const grid = document.getElementById("calGrid");
+        const title = document.getElementById("calTitle");
+        const year = calViewDate.getFullYear();
+        const month = calViewDate.getMonth();
+        
+        title.textContent = year + " 年 " + (month + 1) + " 月";
+        grid.innerHTML = "";
+
+        // 加入星期標頭
+        const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
+        dayNames.forEach(d => {
+            const div = document.createElement("div");
+            div.className = "cal-day-name";
+            div.textContent = d;
+            grid.appendChild(div);
+        });
+
+        // 計算月曆第一天位置
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // 讀取現有資料進行比對
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        // 填充空白日期
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement("div");
+            grid.appendChild(empty);
+        }
+
+        // 填充日期格
+        for (let d = 1; d <= daysInMonth; d++) {
+            const cell = document.createElement("div");
+            cell.className = "cal-date-cell";
+            
+            const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
+            
+            // 檢查該日期是否有超標紀錄
+            const hasHighBP = data.some(r => {
+                return r.date === dateStr && (Number(r.sys) >= 140 || Number(r.dia) >= 90);
+            });
+
+            if (hasHighBP) {
+                cell.classList.add("bp-high");
+            }
+
+            cell.innerHTML = `<span class="cal-date-num">${d}</span>`;
+            grid.appendChild(cell);
+        }
     }
 
     function quickNote(index, text) {

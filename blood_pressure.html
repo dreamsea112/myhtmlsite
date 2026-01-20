@@ -313,6 +313,8 @@
     });
 
     const dbRef = database.ref("bloodPressureRecords");
+    // 新增註解：藥物庫存 Firebase 參照
+    const stockRef = database.ref("drugStockCount");
 
     function verifyPassword() {
         const pwd = document.getElementById("authPwd").value;
@@ -343,16 +345,22 @@
         };
     }
 
-    // 新增註解：藥物庫存管理邏輯
+    // 修改註解：優化藥物庫存加載，增加從 Firebase 讀取邏輯
     function loadStock() {
-        const stock = localStorage.getItem(STOCK_KEY) || 0;
-        document.getElementById("drugStock").value = stock;
-        checkStockAlert(stock);
+        stockRef.once("value").then(snapshot => {
+            const stock = snapshot.val() !== null ? snapshot.val() : (localStorage.getItem(STOCK_KEY) || 0);
+            document.getElementById("drugStock").value = stock;
+            localStorage.setItem(STOCK_KEY, stock);
+            checkStockAlert(stock);
+        });
     }
 
+    // 修改註解：優化藥物庫存存儲，同步更新至 Firebase
     function updateStock(val) {
-        localStorage.setItem(STOCK_KEY, val);
-        checkStockAlert(val);
+        const sCount = Number(val);
+        localStorage.setItem(STOCK_KEY, sCount);
+        stockRef.set(sCount);
+        checkStockAlert(sCount);
     }
 
     // 新增註解：修正剩餘0顆時不顯示提醒的問題
@@ -754,5 +762,3 @@
 
 </body>
 </html>
-
-

@@ -345,21 +345,38 @@
         };
     }
 
-    // 修改註解：優化藥物庫存加載，增加從 Firebase 讀取邏輯
+    // 修改註解：優化藥物庫存加載，增加從 Firebase 讀取邏輯與預設值處理
     function loadStock() {
         stockRef.once("value").then(snapshot => {
-            const stock = snapshot.val() !== null ? snapshot.val() : (localStorage.getItem(STOCK_KEY) || 0);
+            let stock;
+            if (snapshot.exists()) {
+                stock = snapshot.val();
+            } else {
+                stock = localStorage.getItem(STOCK_KEY) || 0;
+                // 新增註解：若遠端無資料則同步本地值上去
+                stockRef.set(Number(stock));
+            }
             document.getElementById("drugStock").value = stock;
             localStorage.setItem(STOCK_KEY, stock);
+            checkStockAlert(stock);
+        }).catch(err => {
+            // 新增註解：離線備援
+            const stock = localStorage.getItem(STOCK_KEY) || 0;
+            document.getElementById("drugStock").value = stock;
             checkStockAlert(stock);
         });
     }
 
-    // 修改註解：優化藥物庫存存儲，同步更新至 Firebase
+    // 修改註解：優化藥物庫存存儲，同步更新至 Firebase 並確保路徑正確
     function updateStock(val) {
         const sCount = Number(val);
         localStorage.setItem(STOCK_KEY, sCount);
-        stockRef.set(sCount);
+        // 新增註解：強制執行 Firebase 寫入並捕捉狀態
+        stockRef.set(sCount).then(() => {
+            console.log("藥位同步成功");
+        }).catch(err => {
+            console.log("同步失敗");
+        });
         checkStockAlert(sCount);
     }
 

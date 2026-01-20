@@ -44,6 +44,12 @@
             box-sizing: border-box;
         }
 
+        /* 新增註解：縮小數值輸入框寬度至約三分之一 */
+        input[type="number"] {
+            width: 60px;
+            text-align: center;
+        }
+
         /* 確保心跳欄位在手機上仍可完整顯示數字 */
         th:nth-child(5), td:nth-child(5) {
             min-width: 90px;
@@ -89,11 +95,11 @@
             background-color: #ffe5e5 !important;
         }
 
-        /* 新增註解：WHO 顏色分級樣式 */
-        .bp-normal { background-color: #e8f5e9 !important; } /* 正常綠色 */
-        .bp-elevated { background-color: #fff3e0 !important; } /* 偏高橘色 */
-        .bp-stage1 { background-color: #ffebee !important; } /* 一級紅色 */
-        .bp-stage2 { background-color: #ffcdd2 !important; border: 2px solid #d32f2f !important; } /* 二級深紅 */
+        /* 新增註解：WHO 顏色分級樣式，改為僅針對輸入框邊框變色 */
+        .input-normal { border: 1px solid #ccc !important; } 
+        .input-elevated { border: 2px solid #ffa726 !important; } /* 橘色邊框 */
+        .input-stage1 { border: 2px solid #ef5350 !important; } /* 紅色邊框 */
+        .input-stage2 { border: 2px solid #b71c1c !important; background-color: #fff9f9 !important; } /* 深紅邊框 */
 
         /* 提醒文字樣式 */
         #medReminder, #avgInfo {
@@ -345,33 +351,28 @@
         };
     }
 
-    // 修改註解：優化藥物庫存加載，增加從 Firebase 讀取邏輯與預設值處理
+    // 修改註解：優化藥物庫存加載，改為實時監聽模式以解決跨裝置同步問題
     function loadStock() {
-        stockRef.once("value").then(snapshot => {
+        stockRef.on("value", snapshot => {
             let stock;
             if (snapshot.exists()) {
                 stock = snapshot.val();
+                document.getElementById("drugStock").value = stock;
+                localStorage.setItem(STOCK_KEY, stock);
+                checkStockAlert(stock);
             } else {
+                // 新增註解：初次初始化
                 stock = localStorage.getItem(STOCK_KEY) || 0;
-                // 新增註解：若遠端無資料則同步本地值上去
                 stockRef.set(Number(stock));
             }
-            document.getElementById("drugStock").value = stock;
-            localStorage.setItem(STOCK_KEY, stock);
-            checkStockAlert(stock);
-        }).catch(err => {
-            // 新增註解：離線備援
-            const stock = localStorage.getItem(STOCK_KEY) || 0;
-            document.getElementById("drugStock").value = stock;
-            checkStockAlert(stock);
         });
     }
 
-    // 修改註解：優化藥物庫存存儲，同步更新至 Firebase 並確保路徑正確
+    // 修改註解：優化藥物庫存存儲，同步更新至 Firebase 並確保數值類型正確
     function updateStock(val) {
         const sCount = Number(val);
         localStorage.setItem(STOCK_KEY, sCount);
-        // 新增註解：強制執行 Firebase 寫入並捕捉狀態
+        // 新增註解：強制執行 Firebase 寫入，實時監聽會自動更新所有裝置 UI
         stockRef.set(sCount).then(() => {
             console.log("藥位同步成功");
         }).catch(err => {
@@ -384,7 +385,7 @@
     function checkStockAlert(stock) {
         const reminder = document.getElementById("stockReminder");
         const sCount = Number(stock);
-        // 修改註解：修正邏輯條件，確保 0 到 7 顆皆顯示橙色警告
+        // 修改註解：修正邏輯條件，確保 0 到 7 顆皆顯示橘色警告
         if (sCount <= 7) {
             reminder.style.display = "block";
             reminder.textContent = "藥物剩餘量警告：目前僅剩 " + sCount + " 顆，請儘速回診領藥";
@@ -442,15 +443,15 @@
         }
     }
 
-    // 新增註解：WHO 血壓分級判定邏輯
+    // 新增註解：WHO 血壓分級判定邏輯，返回對應的 CSS 邊框類名
     function getWHOCategory(sys, dia) {
         const s = Number(sys);
         const d = Number(dia);
-        if (!s || !d) return "";
-        if (s >= 160 || d >= 100) return "bp-stage2"; // 二級高血壓
-        if (s >= 140 || d >= 90) return "bp-stage1"; // 一級高血壓
-        if (s >= 120 || d >= 80) return "bp-elevated"; // 偏高
-        return "bp-normal"; // 正常
+        if (!s || !d) return "input-normal";
+        if (s >= 160 || d >= 100) return "input-stage2"; // 二級高血壓
+        if (s >= 140 || d >= 90) return "input-stage1"; // 一級高血壓
+        if (s >= 120 || d >= 80) return "input-elevated"; // 偏高
+        return "input-normal"; // 正常
     }
 
     /* 靜默儲存函式 */
@@ -473,16 +474,15 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
 
-        // 修改註解：套用 WHO 分級變色
+        // 修改註解：套用 WHO 分級變色至輸入框邊框
         if (inputElement && (key === 'sys' || key === 'dia')) {
-            const parentTdSys = inputElement.closest('tr').querySelector('td:nth-child(3)');
-            const parentTdDia = inputElement.closest('tr').querySelector('td:nth-child(4)');
-            const sysVal = inputElement.closest('tr').querySelector('td:nth-child(3) input').value;
-            const diaVal = inputElement.closest('tr').querySelector('td:nth-child(4) input').value;
+            const tr = inputElement.closest('tr');
+            const sysInput = tr.querySelector('td:nth-child(3) input');
+            const diaInput = tr.querySelector('td:nth-child(4) input');
             
-            const category = getWHOCategory(sysVal, diaVal);
-            parentTdSys.className = category;
-            parentTdDia.className = category;
+            const category = getWHOCategory(sysInput.value, diaInput.value);
+            sysInput.className = category;
+            diaInput.className = category;
         }
     }
 
@@ -532,20 +532,20 @@
             const whoClass = getWHOCategory(record.sys, record.dia);
 
             tr.innerHTML = `
-                <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
-                <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
-                <td class="${whoClass}">
-                    <input type="number" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)">
+                <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)" style="width: auto;"></td>
+                <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)" style="width: auto;"></td>
+                <td>
+                    <input type="number" value="${record.sys}" class="${whoClass}" onchange="updateSilent(${index}, 'sys', this.value, this)">
                 </td>
-                <td class="${whoClass}">
-                    <input type="number" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)">
+                <td>
+                    <input type="number" value="${record.dia}" class="${whoClass}" onchange="updateSilent(${index}, 'dia', this.value, this)">
                 </td>
                 <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
                 <td>
                     <input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)">
                 </td>
                 <td>
-                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)">
+                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)" style="width: 20px; height: 20px;">
                 </td>
                 <td><button onclick="remove(${index})">刪除</button></td>
             `;

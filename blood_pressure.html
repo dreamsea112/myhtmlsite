@@ -198,11 +198,6 @@
             padding: 40px;
             color: #333;
         }
-
-        /* 新增註解：定義隱藏樣式以處理不使用的剩餘藥量區塊 */
-        .hidden-stock-area {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -264,12 +259,8 @@
     <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">顯示數據分析</button>
     <button class="add-btn" style="background-color:#f1f8e9;" onclick="toggleCalendar(true)">顯示月曆檢視</button>
     <button class="add-btn" style="background-color:#fff9c4;" onclick="generatePDF()">下載回診報告</button>
-    
-    <span class="hidden-stock-area">
-        <span style="margin-left:15px;">剩餘藥量：</span>
-        <input type="number" id="drugStock" style="width:60px;" onchange="updateStock(this.value)"> 顆
-    </span>
-
+    <span style="margin-left:15px;">剩餘藥量：</span>
+    <input type="number" id="drugStock" style="width:60px;" onchange="updateStock(this.value)"> 顆
     <span style="margin-left:15px;">月份篩選：</span>
     <select id="monthFilter" onchange="loadRecords()"></select>
 </div>
@@ -763,3 +754,4 @@
 
 </body>
 </html>
+

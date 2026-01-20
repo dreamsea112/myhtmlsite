@@ -9,170 +9,106 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* 深色模式全域設定 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
-            padding: 10px; /* 縮小全域邊距以適應手機螢幕 */
-            background: #121212; /* 質感深黑底色 */
-            color: #e0e0e0; /* 亮白色文字 */
-            font-size: 16px; /* 提升基礎字體大小，避免手機閱讀吃力 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
         }
         h1 {
             text-align: center;
-            color: #ffffff;
-            margin-bottom: 20px;
-            font-weight: 300;
-            font-size: 1.4em;
         }
 
-        /* 允許表格在行動裝置橫向捲動 */
+        
+        /* 新增：允許表格在行動裝置橫向捲動，避免欄位被強制壓縮 */
         .table-wrapper {
             overflow-x: auto;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background: #1e1e1e; /* 區塊深灰底色 */
+            background: white;
+            /* 新增：避免表格被壓到不可閱讀 */
             min-width: 980px;
-            color: #e0e0e0;
         }
         th, td {
-            border: 1px solid #333333;
-            padding: 4px 2px; /* 修改項目：大幅縮減上下間距(標示1與2)，原12px */
+            border: 1px solid #ccc;
+            padding: 8px;
             text-align: center;
         }
         th {
-            background: #2c2c2c;
-            color: #ffffff;
-            font-weight: 500;
-            font-size: 15px;
-            padding: 8px 2px; /* 表頭稍微保留一點高度以維持專業感 */
+            background: #eee;
         }
-        
-        /* 輸入框樣式調整 */
         input {
-            width: 96%;
+            width: 100%;
             box-sizing: border-box;
-            background: #2c2c2c;
-            border: 1px solid #444;
-            color: #ffffff;
-            padding: 8px 4px; /* 修改項目：調整填充讓輸入框高度適中且文字清晰 */
-            border-radius: 4px;
-            font-size: 16px; /* 確保輸入時手機瀏覽器不會因字體太小而自動放大頁面 */
-        }
-        input:focus {
-            outline: none;
-            border-color: #64b5f6;
-            background: #333;
         }
 
-        /* 欄位寬度微調優化(對應圖片需求) */
-        /* 縮小數值欄位(收縮壓、舒張壓、心跳)的輸入框感官寬度 */
-        td:nth-child(3) input, td:nth-child(4) input, td:nth-child(5) input {
-            max-width: 80px; 
+        /* 新增：確保心跳欄位在手機上仍可完整顯示數字 */
+        th:nth-child(5), td:nth-child(5) {
+            min-width: 90px;
         }
 
-        /* 欄位最小寬度限制 */
-        /* 新增註解：再次加大時間與收縮壓欄位寬度，確保「凌晨X:XX」等長文字完全不重疊並推移後方框格 */
-        th:nth-child(2), td:nth-child(2) { min-width: 120px; } 
-        th:nth-child(3), td:nth-child(3) { min-width: 110px; }
-        th:nth-child(5), td:nth-child(5) { min-width: 70px; }
-        th:nth-child(6), td:nth-child(6) { min-width: 160px; }
-        th:nth-child(7), td:nth-child(7) { min-width: 80px; }
+        /* 新增：確保備註欄位在手機上可正常輸入與閱讀 */
+        th:nth-child(6), td:nth-child(6) {
+            min-width: 160px;
+        }
 
-        /* 按鈕視覺優化 */
+        /* 新增：已服藥欄位的最小寬度 */
+        th:nth-child(7), td:nth-child(7) {
+            min-width: 90px;
+        }
+
         button {
-            padding: 6px 12px;
+            padding: 6px 10px;
             cursor: pointer;
-            border-radius: 6px;
-            border: none;
-            background: #333;
-            color: #eee;
-            transition: all 0.3s;
-            font-size: 14px;
-        }
-        button:hover {
-            background: #444;
         }
         .add-btn {
             margin-bottom: 10px;
-            background: #2196f3; /* 藍色按鈕增加質感 */
-            color: white;
-            font-weight: bold;
-        }
-        .add-btn:hover {
-            background: #1e88e5;
         }
 
-        /* 驗證圖層深色設計 */
         #authLayer {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(245,245,245,0.95);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
         }
         #authBox {
-            background: #1e1e1e;
-            padding: 30px;
-            border: 1px solid #333;
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
             width: 300px;
             text-align: center;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
 
-        /* 高血壓顯示樣式(修改為金色質感配色) */
-        /* 修改項目：將底色改為金色，文字改為白色/深色，且僅限輸入框變色 */
-        .bp-high-box {
-            background-color: #B8860B !important; /* 經典金色 */
-            color: #FFFFFF !important; 
-            border-color: #FFFFFF !important;
-        }
-        
-        /* 月曆專用超標樣式 */
-        .cal-high {
-            background-color: #B8860B !important;
-            border: 1px solid #FFFFFF !important;
-        }
-        .cal-high .cal-date-num {
-            color: #FFFFFF !important;
-            font-weight: bold;
+        /* 新增：高血壓顯示樣式（僅影響顯示） */
+        .bp-high {
+            background-color: #ffe5e5 !important;
         }
 
-        /* 提醒文字樣式 */
+        /* 新增：提醒文字樣式 */
         #medReminder, #avgInfo {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             text-align: center;
-            color: #ff5252;
+            color: #a00;
             font-weight: bold;
-            background: rgba(255,82,82,0.1);
-            padding: 10px;
-            border-radius: 8px;
-        }
-        #avgInfo {
-            color: #64b5f6;
-            background: rgba(100,181,246,0.1);
         }
 
-        /* 備註快速選單按鈕 */
+        /* 新增：備註快速選單按鈕 */
         .note-btn {
             margin: 2px;
-            padding: 4px 8px;
+            padding: 2px 6px;
             font-size: 12px;
-            background: #424242;
         }
 
-        /* 圖表彈窗深色設計 */
+        /* 新增：圖表彈窗與月份選擇樣式 */
         #chartLayer {
             position: fixed;
             inset: 0;
-            background: #121212;
+            background: white;
             display: none;
             flex-direction: column;
             padding: 20px;
@@ -180,22 +116,18 @@
         }
         .filter-section {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         #monthFilter {
-            padding: 8px;
+            padding: 5px;
             font-size: 16px;
-            background: #1e1e1e;
-            color: #fff;
-            border: 1px solid #444;
-            border-radius: 6px;
         }
 
-        /* 月曆彈窗深色設計 */
+        /* 新增：月曆彈窗樣式區塊 */
         #calendarLayer {
             position: fixed;
             inset: 0;
-            background: #121212;
+            background: white;
             display: none;
             flex-direction: column;
             padding: 20px;
@@ -213,7 +145,7 @@
         .cal-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
+            gap: 5px;
             max-width: 600px;
             margin: 0 auto;
             width: 100%;
@@ -221,70 +153,62 @@
         .cal-day-name {
             text-align: center;
             font-weight: bold;
-            background: #2c2c2c;
-            padding: 10px;
-            border: 1px solid #333;
-            color: #999;
+            background: #eee;
+            padding: 5px;
+            border: 1px solid #ccc;
         }
         .cal-date-cell {
             aspect-ratio: 1 / 1;
-            border: 1px solid #333;
+            border: 1px solid #ccc;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
-            background: #1e1e1e;
-            cursor: default;
-            box-sizing: border-box;
-            border-radius: 4px;
+            background: #fff;
+            cursor: default; /* 修改：由 help 改為 default，移除問號鼠標 */
+            box-sizing: border-box; /* 新增：確保框線包含在寬高內，防止底線消失 */
         }
         .cal-date-num {
             font-size: 1.1em;
-            color: #ffffff;
         }
-        
-        /* 針對特定按鈕的背景色微調 */
-        .btn-chart { background-color: #0288d1 !important; color: white !important; }
-        .btn-calendar { background-color: #388e3c !important; color: white !important; }
-        .btn-download { background-color: #455a64 !important; color: white !important; }
     </style>
 </head>
 <body>
 
 <div id="authLayer">
     <div id="authBox">
-        <h3 style="color:#fff; margin-top:0;">請輸入密碼</h3>
+        <h3>請輸入密碼</h3>
         <input type="password" id="authPwd" placeholder="密碼">
-        <button onclick="verifyPassword()" style="margin-top:15px; width:100%; background:#2196f3; color:white;">驗證</button>
-        <div id="authMsg" style="margin-top:10px; color:#ff5252;"></div>
+        <button onclick="verifyPassword()">驗證</button>
+        <div id="authMsg"></div>
     </div>
 </div>
 
 <div id="chartLayer">
     <div style="text-align:right;">
-        <button onclick="toggleChart(false)" style="background:#444;">關閉圖表</button>
+        <button onclick="toggleChart(false)">關閉圖表</button>
     </div>
     <div style="text-align:center; margin-bottom:10px;">
-        <h2 style="font-size:24px; margin:0; color:#fff;">最近30筆趨勢圖</h2>
+        <h2 style="font-size:24px; margin:0;">最近30筆趨勢圖</h2>
     </div>
-    <div style="flex:1; min-height:0; background:#1e1e1e; border-radius:12px; padding:10px;">
+    <div style="flex:1; min-height:0;">
         <canvas id="bpChart"></canvas>
     </div>
 </div>
 
 <div id="calendarLayer">
     <div style="text-align:right;">
-        <button onclick="toggleCalendar(false)" style="background:#444;">關閉月曆</button>
+        <button onclick="toggleCalendar(false)">關閉月曆</button>
     </div>
     <div class="cal-header">
         <button onclick="changeCalMonth(-1)">上個月</button>
-        <h2 id="calTitle" style="color:#fff; margin:0;">2024年01月</h2>
+        <h2 id="calTitle">2024-01</h2>
         <button onclick="changeCalMonth(1)">下個月</button>
     </div>
     <div id="calGrid" class="cal-grid"></div>
-    <div style="text-align:center; margin-top:20px; color:#999; font-size:14px;">
-        註：金色代表該日有血壓超標紀錄，滑鼠指向日期可顯示當日數值
+    <div style="text-align:center; margin-top:20px; color:#666; font-size:14px;">
+        註：粉紅色代表該日有血壓超標紀錄，滑鼠指向日期可顯示當日數值
     </div>
 </div>
 
@@ -298,10 +222,10 @@
 
 <div class="filter-section">
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
-    <button class="add-btn btn-download" onclick="downloadCSV()">下載紀錄</button>
-    <button class="add-btn btn-chart" onclick="toggleChart(true)">顯示趨勢圖</button>
-    <button class="add-btn btn-calendar" onclick="toggleCalendar(true)">顯示月曆檢視</button>
-    <br style="display:block; margin:5px 0;"> <span style="margin-left:10px; color:#bbb;">月份篩選：</span>
+    <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
+    <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">顯示趨勢圖</button>
+    <button class="add-btn" style="background-color:#f1f8e9;" onclick="toggleCalendar(true)">顯示月曆檢視</button>
+    <span style="margin-left:15px;">月份篩選：</span>
     <select id="monthFilter" onchange="loadRecords()"></select>
 </div>
 
@@ -328,8 +252,9 @@
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
-    let chartInstance = null; /* 用於存放圖表實體 */
-    let calViewDate = new Date(); /* 月曆當前顯示的年月變數 */
+    let chartInstance = null; // 新增：用於存放圖表實體
+    // 新增：月曆當前顯示的年月變數
+    let calViewDate = new Date();
 
     const firebaseConfig = {
       apiKey: "AIzaSyB4S2D1GpRME4ZXccqczkUFtqGIfhgjstI",
@@ -359,7 +284,7 @@
         .then(() => {
             localStorage.setItem("bp_auth_ok", "1");
             document.getElementById("authLayer").style.display = "none";
-            initMonthFilter(); /* 初始化月份下拉選單 */
+            initMonthFilter(); // 新增：初始化月份下拉選單
             loadRecords();
         })
         .catch(() => {
@@ -375,6 +300,7 @@
         };
     }
 
+    /* 新增：動態生成月份選單，預設選取當前月份 */
     function initMonthFilter() {
         const selector = document.getElementById("monthFilter");
         if (selector.options.length > 0) return;
@@ -382,6 +308,7 @@
         const now = new Date();
         const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
         
+        // 預設先加入當月，避免沒資料時空白
         const defaultOpt = document.createElement("option");
         defaultOpt.value = currentMonth;
         defaultOpt.textContent = currentMonth;
@@ -392,11 +319,14 @@
         dbRef.once("value").then(snapshot => {
             const data = snapshot.val() || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            
+            // 更新月份清單，確保新月份會出現在選單
             updateMonthList(data);
             render(data);
         });
     }
 
+    /* 新增：根據現有資料更新月份篩選選單 */
     function updateMonthList(data) {
         const selector = document.getElementById("monthFilter");
         const currentVal = selector.value;
@@ -422,20 +352,27 @@
         }
     }
 
+    /* 新增：靜默儲存函式 - 關鍵：儲存但不重新渲染，保護輸入焦點 */
+    /* 新增：在此函式內加入 DOM 操作邏輯，實現不重新渲染也能即時變更紅底 */
     function updateSilent(index, key, value, inputElement) {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data[index][key] = value;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
+        // 此處不呼叫 render()，避免 HTML 元素重設導致 Tab 跳轉失效
 
-        /* 修改項目：僅針對輸入框進行變色處理 */
+        // 新增：修正後的即時變色邏輯（直接操作 td 元素）
         if (inputElement && (key === 'sys' || key === 'dia')) {
             const val = Number(value);
-            const threshold = (key === 'sys') ? 140 : 90;
-            if (value !== "" && val >= threshold) {
-                inputElement.classList.add("bp-high-box");
-            } else {
-                inputElement.classList.remove("bp-high-box");
+            // 透過 input 找到外層的 td 標籤
+            const parentTd = inputElement.closest('td');
+            if (parentTd) {
+                const threshold = (key === 'sys') ? 140 : 90;
+                if (value !== "" && val >= threshold) {
+                    parentTd.classList.add("bp-high");
+                } else {
+                    parentTd.classList.remove("bp-high");
+                }
             }
         }
     }
@@ -468,7 +405,11 @@
             }
         });
 
-        document.getElementById("medReminder").style.display = tookMedToday ? "none" : "block";
+        if (!tookMedToday) {
+            document.getElementById("medReminder").style.display = "block";
+        } else {
+            document.getElementById("medReminder").style.display = "none";
+        }
 
         if (todayCount > 0) {
             document.getElementById("avgInfo").style.display = "block";
@@ -479,6 +420,8 @@
             document.getElementById("avgInfo").style.display = "none";
         }
 
+        /* 修改：使用 updateSilent 進行即時儲存 */
+        /* 新增：在 onchange 中傳入 this 以便 updateSilent 抓取當前輸入框進行即時樣式修改 */
         data.forEach((record, index) => {
             if (record.date.substring(0, 7) !== filterMonth) return;
 
@@ -489,25 +432,26 @@
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
                 <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
-                <td>
-                    <input type="number" class="${sysHigh ? "bp-high-box" : ""}" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)">
+                <td class="${sysHigh ? "bp-high" : ""}">
+                    <input type="number" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)">
                 </td>
-                <td>
-                    <input type="number" class="${diaHigh ? "bp-high-box" : ""}" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)">
+                <td class="${diaHigh ? "bp-high" : ""}">
+                    <input type="number" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)">
                 </td>
                 <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
                 <td>
                     <input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)">
                 </td>
                 <td>
-                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)" style="width:20px; height:20px;">
+                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)">
                 </td>
-                <td><button onclick="remove(${index})" style="background:#c62828; color:white;">刪除</button></td>
+                <td><button onclick="remove(${index})">刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
     }
 
+    /* 新增：趨勢圖顯示切換與繪製邏輯 */
     function toggleChart(show) {
         const layer = document.getElementById("chartLayer");
         if (!show) {
@@ -517,8 +461,9 @@
         layer.style.display = "flex";
         
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        // 篩選有完整血壓數據的紀錄並依日期排序
         const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-        const last30 = validData.slice(-30);
+        const last30 = validData.slice(-30); // 取最近30筆
 
         const ctx = document.getElementById('bpChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
@@ -534,39 +479,29 @@
                         borderColor: '#ff5252',
                         backgroundColor: '#ff5252',
                         fill: false,
-                        tension: 0.2
+                        tension: 0.1
                     },
                     {
                         label: '舒張壓',
                         data: last30.map(r => r.dia),
-                        borderColor: '#64b5f6',
-                        backgroundColor: '#64b5f6',
+                        borderColor: '#448aff',
+                        backgroundColor: '#448aff',
                         fill: false,
-                        tension: 0.2
+                        tension: 0.1
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { color: '#e0e0e0' } }
-                },
                 scales: {
-                    y: { 
-                        min: 40, max: 200,
-                        grid: { color: '#333' },
-                        ticks: { color: '#999' }
-                    },
-                    x: {
-                        grid: { color: '#333' },
-                        ticks: { color: '#999' }
-                    }
+                    y: { min: 40, max: 200 }
                 }
             }
         });
     }
 
+    /* 新增：月曆顯示切換與生成邏輯 */
     function toggleCalendar(show) {
         const layer = document.getElementById("calendarLayer");
         if (!show) {
@@ -577,11 +512,13 @@
         renderCalendar();
     }
 
+    /* 新增：月曆月份切換函式 */
     function changeCalMonth(offset) {
         calViewDate.setMonth(calViewDate.getMonth() + offset);
         renderCalendar();
     }
 
+    /* 新增：月曆核心渲染函式 */
     function renderCalendar() {
         const grid = document.getElementById("calGrid");
         const title = document.getElementById("calTitle");
@@ -591,6 +528,7 @@
         title.textContent = year + " 年 " + (month + 1) + " 月";
         grid.innerHTML = "";
 
+        // 加入星期標頭
         const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
         dayNames.forEach(d => {
             const div = document.createElement("div");
@@ -599,23 +537,39 @@
             grid.appendChild(div);
         });
 
+        // 計算月曆第一天位置
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // 讀取現有資料進行比對
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 
+        // 填充空白日期
         for (let i = 0; i < firstDay; i++) {
-            grid.appendChild(document.createElement("div"));
+            const empty = document.createElement("div");
+            grid.appendChild(empty);
         }
 
+        // 填充日期格
         for (let d = 1; d <= daysInMonth; d++) {
             const cell = document.createElement("div");
             cell.className = "cal-date-cell";
+            
             const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
+            
+            // 新增：搜尋該日期的所有紀錄以供滑鼠指向顯示
             const dayRecords = data.filter(r => r.date === dateStr && r.sys && r.dia);
-            const hasHighBP = dayRecords.some(r => (Number(r.sys) >= 140 || Number(r.dia) >= 90));
 
-            if (hasHighBP) cell.classList.add("cal-high");
+            // 檢查該日期是否有超標紀錄
+            const hasHighBP = dayRecords.some(r => {
+                return (Number(r.sys) >= 140 || Number(r.dia) >= 90);
+            });
 
+            if (hasHighBP) {
+                cell.classList.add("bp-high");
+            }
+
+            // 新增：如果當日有資料，設定 title 屬性實現滑鼠指向顯示功能
             if (dayRecords.length > 0) {
                 let tooltipText = "";
                 dayRecords.forEach(r => {
@@ -629,9 +583,17 @@
         }
     }
 
+    function quickNote(index, text) {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        data[index].note = text;
+        save(data);
+        render(data);
+    }
+
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
+        // 僅在全域儲存時 render
     }
 
     function addRecord() {
@@ -645,11 +607,13 @@
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
         
+        // 確保新增的月份在選單中存在並選取它
         const newMonth = date.substring(0, 7);
         save(data);
         
+        const selector = document.getElementById("monthFilter");
         updateMonthList(data);
-        document.getElementById("monthFilter").value = newMonth;
+        selector.value = newMonth;
         render(data);
     }
 
@@ -683,5 +647,3 @@
 
 </body>
 </html>
-
-

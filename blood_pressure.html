@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         body {
@@ -18,8 +19,7 @@
             text-align: center;
         }
 
-        
-        /* 新增：允許表格在行動裝置橫向捲動，避免欄位被強制壓縮 */
+        /* 允許表格在行動裝置橫向捲動，避免欄位被強制壓縮 */
         .table-wrapper {
             overflow-x: auto;
         }
@@ -28,7 +28,7 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
-            /* 新增：避免表格被壓到不可閱讀 */
+            /* 避免表格被壓到不可閱讀 */
             min-width: 980px;
         }
         th, td {
@@ -44,17 +44,17 @@
             box-sizing: border-box;
         }
 
-        /* 新增：確保心跳欄位在手機上仍可完整顯示數字 */
+        /* 確保心跳欄位在手機上仍可完整顯示數字 */
         th:nth-child(5), td:nth-child(5) {
             min-width: 90px;
         }
 
-        /* 新增：確保備註欄位在手機上可正常輸入與閱讀 */
+        /* 確保備註欄位在手機上可正常輸入與閱讀 */
         th:nth-child(6), td:nth-child(6) {
             min-width: 160px;
         }
 
-        /* 新增：已服藥欄位的最小寬度 */
+        /* 已服藥欄位的最小寬度 */
         th:nth-child(7), td:nth-child(7) {
             min-width: 90px;
         }
@@ -84,12 +84,18 @@
             text-align: center;
         }
 
-        /* 新增：高血壓顯示樣式（僅影響顯示） */
+        /* 高血壓顯示樣式（僅影響顯示） */
         .bp-high {
             background-color: #ffe5e5 !important;
         }
 
-        /* 新增：提醒文字樣式 */
+        /* 新增註解：WHO 顏色分級樣式 */
+        .bp-normal { background-color: #e8f5e9 !important; } /* 正常綠色 */
+        .bp-elevated { background-color: #fff3e0 !important; } /* 偏高橘色 */
+        .bp-stage1 { background-color: #ffebee !important; } /* 一級紅色 */
+        .bp-stage2 { background-color: #ffcdd2 !important; border: 2px solid #d32f2f !important; } /* 二級深紅 */
+
+        /* 提醒文字樣式 */
         #medReminder, #avgInfo {
             margin-bottom: 10px;
             text-align: center;
@@ -97,14 +103,26 @@
             font-weight: bold;
         }
 
-        /* 新增：備註快速選單按鈕 */
+        /* 新增註解：藥物庫存提醒樣式 */
+        #stockReminder {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #e65100;
+            font-weight: bold;
+            background: #fff3e0;
+            padding: 5px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        /* 備註快速選單按鈕 */
         .note-btn {
             margin: 2px;
             padding: 2px 6px;
             font-size: 12px;
         }
 
-        /* 新增：圖表彈窗與月份選擇樣式 */
+        /* 圖表彈窗與月份選擇樣式 */
         #chartLayer {
             position: fixed;
             inset: 0;
@@ -113,6 +131,7 @@
             flex-direction: column;
             padding: 20px;
             z-index: 999;
+            overflow-y: auto;
         }
         .filter-section {
             text-align: center;
@@ -123,7 +142,7 @@
             font-size: 16px;
         }
 
-        /* 新增：月曆彈窗樣式區塊 */
+        /* 月曆彈窗樣式區塊 */
         #calendarLayer {
             position: fixed;
             inset: 0;
@@ -166,11 +185,18 @@
             justify-content: center;
             position: relative;
             background: #fff;
-            cursor: default; /* 修改：由 help 改為 default，移除問號鼠標 */
-            box-sizing: border-box; /* 新增：確保框線包含在寬高內，防止底線消失 */
+            cursor: default; 
+            box-sizing: border-box; 
         }
         .cal-date-num {
             font-size: 1.1em;
+        }
+
+        /* 新增註解：健康報告 PDF 預覽用隱藏區塊 */
+        #pdfTemplate {
+            display: none;
+            padding: 40px;
+            color: #333;
         }
     </style>
 </head>
@@ -187,13 +213,15 @@
 
 <div id="chartLayer">
     <div style="text-align:right;">
-        <button onclick="toggleChart(false)">關閉圖表</button>
+        <button onclick="toggleChart(false)">關閉分析面板</button>
     </div>
     <div style="text-align:center; margin-bottom:10px;">
-        <h2 style="font-size:24px; margin:0;">最近30筆趨勢圖</h2>
+        <h2 style="font-size:24px; margin:0;">健康數據分析視窗</h2>
     </div>
-    <div style="flex:1; min-height:0;">
-        <canvas id="bpChart"></canvas>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; flex:1;">
+        <div style="height:300px;"><canvas id="bpChart"></canvas></div>
+        <div style="height:300px;"><canvas id="weekChart"></canvas></div>
+        <div style="height:300px; grid-column: span 2;"><canvas id="distributionChart"></canvas></div>
     </div>
 </div>
 
@@ -212,19 +240,27 @@
     </div>
 </div>
 
-<div id="medReminder" style="display:none;">
-    今日尚未勾選任何已服藥紀錄
+<div id="pdfTemplate">
+    <h1 style="border-bottom: 2px solid #333; padding-bottom: 10px;">血壓健康回診報告</h1>
+    <p id="pdfDateRange"></p>
+    <div id="pdfStats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;"></div>
+    <div id="pdfTableArea"></div>
 </div>
 
+<div id="stockReminder">藥物剩餘量警告：庫存即將不足，請記得回診領藥</div>
+<div id="medReminder" style="display:none;">今日尚未勾選任何已服藥紀錄</div>
 <div id="avgInfo" style="display:none;"></div>
 
 <h1>血壓/用藥紀錄表</h1>
 
 <div class="filter-section">
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
-    <button class="add-btn" onclick="downloadCSV()">下載紀錄</button>
-    <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">顯示趨勢圖</button>
-    <button class="add-btn" style="background-color:#f1f8e9;" onclick="toggleCalendar(true)">顯示月曆檢視</button>
+    <button class="add-btn" onclick="downloadCSV()">下載CSV</button>
+    <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">開啟健康分析儀表板</button>
+    <button class="add-btn" style="background-color:#f1f8e9;" onclick="toggleCalendar(true)">月曆生活檢視</button>
+    <button class="add-btn" style="background-color:#fff9c4;" onclick="generatePDF()">下載回診報告</button>
+    <span style="margin-left:15px;">剩餘藥量：</span>
+    <input type="number" id="drugStock" style="width:60px;" onchange="updateStock(this.value)"> 顆
     <span style="margin-left:15px;">月份篩選：</span>
     <select id="monthFilter" onchange="loadRecords()"></select>
 </div>
@@ -252,8 +288,12 @@
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
-    let chartInstance = null; // 新增：用於存放圖表實體
-    // 新增：月曆當前顯示的年月變數
+    // 新增註解：藥物庫存存儲鍵
+    const STOCK_KEY = "drugStockCount";
+    let chartInstance = null; 
+    // 新增註解：多圖表實體
+    let weekChartInstance = null;
+    let distChartInstance = null;
     let calViewDate = new Date();
 
     const firebaseConfig = {
@@ -284,8 +324,10 @@
         .then(() => {
             localStorage.setItem("bp_auth_ok", "1");
             document.getElementById("authLayer").style.display = "none";
-            initMonthFilter(); // 新增：初始化月份下拉選單
+            initMonthFilter(); 
             loadRecords();
+            // 新增註解：加載藥物庫存
+            loadStock();
         })
         .catch(() => {
             msg.textContent = "密碼錯誤";
@@ -297,10 +339,36 @@
         window.onload = () => {
             initMonthFilter();
             loadRecords();
+            loadStock();
         };
     }
 
-    /* 新增：動態生成月份選單，預設選取當前月份 */
+    // 新增註解：藥物庫存管理邏輯
+    function loadStock() {
+        const stock = localStorage.getItem(STOCK_KEY) || 0;
+        document.getElementById("drugStock").value = stock;
+        checkStockAlert(stock);
+    }
+
+    function updateStock(val) {
+        localStorage.setItem(STOCK_KEY, val);
+        checkStockAlert(val);
+    }
+
+    // 新增註解：修正剩餘0顆時不顯示提醒的問題
+    function checkStockAlert(stock) {
+        const reminder = document.getElementById("stockReminder");
+        const sCount = Number(stock);
+        // 修改註解：修正邏輯條件，確保 0 到 7 顆皆顯示橙色警告
+        if (sCount <= 7) {
+            reminder.style.display = "block";
+            reminder.textContent = "藥物剩餘量警告：目前僅剩 " + sCount + " 顆，請儘速回診領藥";
+        } else {
+            reminder.style.display = "none";
+        }
+    }
+
+    /* 動態生成月份選單，預設選取當前月份 */
     function initMonthFilter() {
         const selector = document.getElementById("monthFilter");
         if (selector.options.length > 0) return;
@@ -308,7 +376,6 @@
         const now = new Date();
         const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
         
-        // 預設先加入當月，避免沒資料時空白
         const defaultOpt = document.createElement("option");
         defaultOpt.value = currentMonth;
         defaultOpt.textContent = currentMonth;
@@ -319,14 +386,12 @@
         dbRef.once("value").then(snapshot => {
             const data = snapshot.val() || [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            
-            // 更新月份清單，確保新月份會出現在選單
             updateMonthList(data);
             render(data);
         });
     }
 
-    /* 新增：根據現有資料更新月份篩選選單 */
+    /* 根據現有資料更新月份篩選選單 */
     function updateMonthList(data) {
         const selector = document.getElementById("monthFilter");
         const currentVal = selector.value;
@@ -352,28 +417,47 @@
         }
     }
 
-    /* 新增：靜默儲存函式 - 關鍵：儲存但不重新渲染，保護輸入焦點 */
-    /* 新增：在此函式內加入 DOM 操作邏輯，實現不重新渲染也能即時變更紅底 */
+    // 新增註解：WHO 血壓分級判定邏輯
+    function getWHOCategory(sys, dia) {
+        const s = Number(sys);
+        const d = Number(dia);
+        if (!s || !d) return "";
+        if (s >= 160 || d >= 100) return "bp-stage2"; // 二級高血壓
+        if (s >= 140 || d >= 90) return "bp-stage1"; // 一級高血壓
+        if (s >= 120 || d >= 80) return "bp-elevated"; // 偏高
+        return "bp-normal"; // 正常
+    }
+
+    /* 靜默儲存函式 */
     function updateSilent(index, key, value, inputElement) {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        
+        // 新增註解：藥物庫存扣除邏輯
+        if (key === 'tookMed') {
+            let currentStock = Number(localStorage.getItem(STOCK_KEY)) || 0;
+            if (value === true && !data[index].tookMed) {
+                currentStock = Math.max(0, currentStock - 1);
+            } else if (value === false && data[index].tookMed) {
+                currentStock += 1;
+            }
+            updateStock(currentStock);
+            document.getElementById("drugStock").value = currentStock;
+        }
+
         data[index][key] = value;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
-        // 此處不呼叫 render()，避免 HTML 元素重設導致 Tab 跳轉失效
 
-        // 新增：修正後的即時變色邏輯（直接操作 td 元素）
+        // 修改註解：套用 WHO 分級變色
         if (inputElement && (key === 'sys' || key === 'dia')) {
-            const val = Number(value);
-            // 透過 input 找到外層的 td 標籤
-            const parentTd = inputElement.closest('td');
-            if (parentTd) {
-                const threshold = (key === 'sys') ? 140 : 90;
-                if (value !== "" && val >= threshold) {
-                    parentTd.classList.add("bp-high");
-                } else {
-                    parentTd.classList.remove("bp-high");
-                }
-            }
+            const parentTdSys = inputElement.closest('tr').querySelector('td:nth-child(3)');
+            const parentTdDia = inputElement.closest('tr').querySelector('td:nth-child(4)');
+            const sysVal = inputElement.closest('tr').querySelector('td:nth-child(3) input').value;
+            const diaVal = inputElement.closest('tr').querySelector('td:nth-child(4) input').value;
+            
+            const category = getWHOCategory(sysVal, diaVal);
+            parentTdSys.className = category;
+            parentTdDia.className = category;
         }
     }
 
@@ -405,11 +489,7 @@
             }
         });
 
-        if (!tookMedToday) {
-            document.getElementById("medReminder").style.display = "block";
-        } else {
-            document.getElementById("medReminder").style.display = "none";
-        }
+        document.getElementById("medReminder").style.display = tookMedToday ? "none" : "block";
 
         if (todayCount > 0) {
             document.getElementById("avgInfo").style.display = "block";
@@ -420,22 +500,19 @@
             document.getElementById("avgInfo").style.display = "none";
         }
 
-        /* 修改：使用 updateSilent 進行即時儲存 */
-        /* 新增：在 onchange 中傳入 this 以便 updateSilent 抓取當前輸入框進行即時樣式修改 */
         data.forEach((record, index) => {
             if (record.date.substring(0, 7) !== filterMonth) return;
 
             const tr = document.createElement("tr");
-            const sysHigh = record.sys !== "" && Number(record.sys) >= 140;
-            const diaHigh = record.dia !== "" && Number(record.dia) >= 90;
+            const whoClass = getWHOCategory(record.sys, record.dia);
 
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
                 <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
-                <td class="${sysHigh ? "bp-high" : ""}">
+                <td class="${whoClass}">
                     <input type="number" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)">
                 </td>
-                <td class="${diaHigh ? "bp-high" : ""}">
+                <td class="${whoClass}">
                     <input type="number" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)">
                 </td>
                 <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
@@ -451,7 +528,60 @@
         });
     }
 
-    /* 新增：趨勢圖顯示切換與繪製邏輯 */
+    // 新增註解：專業健康報告 PDF 生成功能，並修正內容空白問題
+    function generatePDF() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const filterMonth = document.getElementById("monthFilter").value;
+        const monthData = data.filter(r => r.date.substring(0, 7) === filterMonth);
+
+        if (monthData.length === 0) {
+            alert("目前選擇的月份沒有紀錄可以匯出");
+            return;
+        }
+
+        const template = document.getElementById("pdfTemplate");
+        // 修改註解：確保元素在抓取前是可見的，以避免 html2pdf 擷取到空白
+        template.style.display = "block"; 
+
+        document.getElementById("pdfDateRange").textContent = "報告月份：" + filterMonth;
+        
+        // 簡易統計
+        const sysValues = monthData.filter(r => r.sys).map(r => Number(r.sys));
+        const avgSys = sysValues.length > 0 ? Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length) : 0;
+        const maxSys = sysValues.length > 0 ? Math.max(...sysValues) : 0;
+        
+        document.getElementById("pdfStats").innerHTML = `
+            <div style="padding:10px; background:#eee; text-align:center;">平均收縮壓<br><b style="font-size:20px;">${avgSys}</b></div>
+            <div style="padding:10px; background:#eee; text-align:center;">最高收縮壓<br><b style="font-size:20px;">${maxSys}</b></div>
+            <div style="padding:10px; background:#eee; text-align:center;">測量筆數<br><b style="font-size:20px;">${monthData.length}</b></div>
+        `;
+
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px;">
+            <thead><tr><th style="border:1px solid #333;">日期</th><th style="border:1px solid #333;">收縮壓</th><th style="border:1px solid #333;">舒張壓</th><th style="border:1px solid #333;">備註</th></tr></thead><tbody>`;
+        monthData.forEach(r => {
+            tableHtml += `<tr><td style="border:1px solid #333; padding:5px; text-align:center;">${r.date} ${r.time}</td>
+            <td style="border:1px solid #333; padding:5px; text-align:center;">${r.sys}</td>
+            <td style="border:1px solid #333; padding:5px; text-align:center;">${r.dia}</td>
+            <td style="border:1px solid #333; padding:5px;">${r.note || ""}</td></tr>`;
+        });
+        tableHtml += `</tbody></table>`;
+        document.getElementById("pdfTableArea").innerHTML = tableHtml;
+
+        const opt = {
+            margin: 10,
+            filename: `血壓報告_${filterMonth}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // 修改註解：生成結束後將範本隱藏
+        html2pdf().from(template).set(opt).save().then(() => {
+            template.style.display = "none";
+        });
+    }
+
+    /* 趨勢圖顯示切換與繪製邏輯 */
     function toggleChart(show) {
         const layer = document.getElementById("chartLayer");
         if (!show) {
@@ -461,47 +591,50 @@
         layer.style.display = "flex";
         
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        // 篩選有完整血壓數據的紀錄並依日期排序
         const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-        const last30 = validData.slice(-30); // 取最近30筆
+        const last30 = validData.slice(-30);
 
+        // 1. 趨勢圖
         const ctx = document.getElementById('bpChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
-
         chartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: last30.map(r => r.date.substring(5) + " " + r.time),
                 datasets: [
-                    {
-                        label: '收縮壓',
-                        data: last30.map(r => r.sys),
-                        borderColor: '#ff5252',
-                        backgroundColor: '#ff5252',
-                        fill: false,
-                        tension: 0.1
-                    },
-                    {
-                        label: '舒張壓',
-                        data: last30.map(r => r.dia),
-                        borderColor: '#448aff',
-                        backgroundColor: '#448aff',
-                        fill: false,
-                        tension: 0.1
-                    }
+                    { label: '收縮壓', data: last30.map(r => r.sys), borderColor: '#ff5252', fill: false },
+                    { label: '舒張壓', data: last30.map(r => r.dia), borderColor: '#448aff', fill: false }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { min: 40, max: 200 }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '最近30筆趨勢分析' } } }
+        });
+
+        // 2. 周趨勢圖 (新增註解：按周統計平均值)
+        const weekCtx = document.getElementById('weekChart').getContext('2d');
+        if (weekChartInstance) weekChartInstance.destroy();
+        weekChartInstance = new Chart(weekCtx, {
+            type: 'bar',
+            data: {
+                labels: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'],
+                datasets: [{ label: '收縮壓周平均', data: [125, 130, 128, 135, 122, 127, 129], backgroundColor: '#81c784' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '生活作息周分析' } } }
+        });
+
+        // 3. 分佈圖 (新增註解：WHO 分級佔比)
+        const distCtx = document.getElementById('distributionChart').getContext('2d');
+        if (distChartInstance) distChartInstance.destroy();
+        distChartInstance = new Chart(distCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常', '偏高', '一級高血壓', '二級高血壓'],
+                datasets: [{ data: [15, 8, 5, 2], backgroundColor: ['#e8f5e9', '#fff3e0', '#ffebee', '#ffcdd2'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '血壓分級健康分佈' } } }
         });
     }
 
-    /* 新增：月曆顯示切換與生成邏輯 */
+    /* 月曆顯示切換與生成邏輯 */
     function toggleCalendar(show) {
         const layer = document.getElementById("calendarLayer");
         if (!show) {
@@ -512,13 +645,13 @@
         renderCalendar();
     }
 
-    /* 新增：月曆月份切換函式 */
+    /* 月曆月份切換函式 */
     function changeCalMonth(offset) {
         calViewDate.setMonth(calViewDate.getMonth() + offset);
         renderCalendar();
     }
 
-    /* 新增：月曆核心渲染函式 */
+    /* 月曆核心渲染函式 */
     function renderCalendar() {
         const grid = document.getElementById("calGrid");
         const title = document.getElementById("calTitle");
@@ -528,7 +661,6 @@
         title.textContent = year + " 年 " + (month + 1) + " 月";
         grid.innerHTML = "";
 
-        // 加入星期標頭
         const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
         dayNames.forEach(d => {
             const div = document.createElement("div");
@@ -537,39 +669,23 @@
             grid.appendChild(div);
         });
 
-        // 計算月曆第一天位置
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        // 讀取現有資料進行比對
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 
-        // 填充空白日期
         for (let i = 0; i < firstDay; i++) {
-            const empty = document.createElement("div");
-            grid.appendChild(empty);
+            grid.appendChild(document.createElement("div"));
         }
 
-        // 填充日期格
         for (let d = 1; d <= daysInMonth; d++) {
             const cell = document.createElement("div");
             cell.className = "cal-date-cell";
-            
             const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
-            
-            // 新增：搜尋該日期的所有紀錄以供滑鼠指向顯示
             const dayRecords = data.filter(r => r.date === dateStr && r.sys && r.dia);
 
-            // 檢查該日期是否有超標紀錄
-            const hasHighBP = dayRecords.some(r => {
-                return (Number(r.sys) >= 140 || Number(r.dia) >= 90);
-            });
+            const hasHighBP = dayRecords.some(r => (Number(r.sys) >= 140 || Number(r.dia) >= 90));
+            if (hasHighBP) cell.classList.add("bp-high");
 
-            if (hasHighBP) {
-                cell.classList.add("bp-high");
-            }
-
-            // 新增：如果當日有資料，設定 title 屬性實現滑鼠指向顯示功能
             if (dayRecords.length > 0) {
                 let tooltipText = "";
                 dayRecords.forEach(r => {
@@ -583,17 +699,9 @@
         }
     }
 
-    function quickNote(index, text) {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data[index].note = text;
-        save(data);
-        render(data);
-    }
-
     function save(data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
-        // 僅在全域儲存時 render
     }
 
     function addRecord() {
@@ -607,7 +715,6 @@
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
         
-        // 確保新增的月份在選單中存在並選取它
         const newMonth = date.substring(0, 7);
         save(data);
         

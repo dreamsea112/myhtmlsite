@@ -343,15 +343,28 @@
         };
     }
 
-    // 新增註解：藥物庫存管理邏輯
+    // 修改註解：強化藥物庫存管理邏輯，整合 Firebase 同步
     function loadStock() {
-        const stock = localStorage.getItem(STOCK_KEY) || 0;
-        document.getElementById("drugStock").value = stock;
-        checkStockAlert(stock);
+        // 新增註解：優先從 Firebase 取得最新庫存
+        database.ref(STOCK_KEY).once("value").then(snapshot => {
+            const stock = snapshot.val();
+            if (stock !== null) {
+                localStorage.setItem(STOCK_KEY, stock);
+                document.getElementById("drugStock").value = stock;
+                checkStockAlert(stock);
+            } else {
+                // 如果雲端無資料，則使用本地暫存
+                const localStock = localStorage.getItem(STOCK_KEY) || 0;
+                document.getElementById("drugStock").value = localStock;
+                checkStockAlert(localStock);
+            }
+        });
     }
 
     function updateStock(val) {
         localStorage.setItem(STOCK_KEY, val);
+        // 新增註解：同步庫存數值至 Firebase 雲端
+        database.ref(STOCK_KEY).set(Number(val));
         checkStockAlert(val);
     }
 
@@ -754,4 +767,3 @@
 
 </body>
 </html>
-

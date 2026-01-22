@@ -10,67 +10,93 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
+        /* 整體風格美化：改為淺色質感底色，深色文字 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             padding: 20px;
-            background: #f5f5f5;
+            background: #f8f9fa; /* 淺灰色質感底 */
+            color: #2c3e50; /* 深色文字 */
+            line-height: 1.6;
         }
         h1 {
             text-align: center;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 30px;
         }
 
-        /* 允許表格在行動裝置橫向捲動，避免欄位被強制壓縮 */
         .table-wrapper {
             overflow-x: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* 輕微陰影提升質感 */
+            padding: 10px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
-            /* 避免表格被壓到不可閱讀 */
             min-width: 980px;
         }
         th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
+            border: none;
+            border-bottom: 1px solid #edf2f7; /* 改用細邊框線 */
+            padding: 12px 8px;
             text-align: center;
         }
         th {
-            background: #eee;
+            background: #f8f9fa;
+            color: #718096;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        input {
+        
+        /* 質感輸入框設定 */
+        input[type="number"], input[type="text"], input[type="date"], input[type="time"], select {
             width: 100%;
             box-sizing: border-box;
-        }
-
-        /* 確保心跳欄位在手機上仍可完整顯示數字 */
-        th:nth-child(5), td:nth-child(5) {
-            min-width: 90px;
-        }
-
-        /* 確保備註欄位在手機上可正常輸入與閱讀 */
-        th:nth-child(6), td:nth-child(6) {
-            min-width: 160px;
-        }
-
-        /* 已服藥欄位的最小寬度 */
-        th:nth-child(7), td:nth-child(7) {
-            min-width: 90px;
-        }
-
-        button {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
             padding: 6px 10px;
-            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: #ffffff;
         }
+        input:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        th:nth-child(5), td:nth-child(5) { min-width: 90px; }
+        th:nth-child(6), td:nth-child(6) { min-width: 160px; }
+        th:nth-child(7), td:nth-child(7) { min-width: 90px; }
+
+        /* 按鈕美化 */
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        button:hover { opacity: 0.8; }
         .add-btn {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            margin-right: 8px;
+            background-color: #3182ce;
+            color: white;
         }
 
         #authLayer {
             position: fixed;
             inset: 0;
-            background: rgba(245,245,245,0.95);
+            background: rgba(255,255,255,0.98);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -78,78 +104,56 @@
         }
         #authBox {
             background: white;
-            padding: 20px;
-            border: 1px solid #ccc;
-            width: 300px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 320px;
             text-align: center;
         }
 
-        /* 高血壓顯示樣式（僅影響顯示） */
-        .bp-high {
-            background-color: #ffe5e5 !important;
-        }
+        /* 修改後的 WHO 顏色提示：僅套用在輸入框背景，不變更整個儲存格底色 */
+        input.bp-normal { background-color: #f0fff4 !important; border-color: #c6f6d5 !important; } 
+        input.bp-elevated { background-color: #fffaf0 !important; border-color: #feebc8 !important; } 
+        input.bp-stage1 { background-color: #fff5f5 !important; border-color: #fed7d7 !important; } 
+        input.bp-stage2 { background-color: #fff5f5 !important; border-color: #feb2b2 !important; color: #c53030 !important; font-weight: bold; }
 
-        /* 新增註解：WHO 顏色分級樣式 */
-        .bp-normal { background-color: #e8f5e9 !important; } /* 正常綠色 */
-        .bp-elevated { background-color: #fff3e0 !important; } /* 偏高橘色 */
-        .bp-stage1 { background-color: #ffebee !important; } /* 一級紅色 */
-        .bp-stage2 { background-color: #ffcdd2 !important; border: 2px solid #d32f2f !important; } /* 二級深紅 */
-
-        /* 提醒文字樣式 */
         #medReminder, #avgInfo {
             margin-bottom: 10px;
             text-align: center;
-            color: #a00;
+            color: #e53e3e;
             font-weight: bold;
         }
 
-        /* 新增註解：藥物庫存提醒樣式 */
         #stockReminder {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-align: center;
-            color: #e65100;
+            color: #dd6b20;
             font-weight: bold;
-            background: #fff3e0;
-            padding: 5px;
-            border-radius: 4px;
+            background: #fffaf0;
+            padding: 10px;
+            border-radius: 8px;
             display: none;
+            border: 1px solid #feebc8;
         }
 
-        /* 備註快速選單按鈕 */
-        .note-btn {
-            margin: 2px;
-            padding: 2px 6px;
-            font-size: 12px;
-        }
-
-        /* 圖表彈窗與月份選擇樣式 */
         #chartLayer {
             position: fixed;
             inset: 0;
-            background: white;
+            background: #f8f9fa;
             display: none;
             flex-direction: column;
-            padding: 20px;
+            padding: 25px;
             z-index: 999;
             overflow-y: auto;
         }
-        .filter-section {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        #monthFilter {
-            padding: 5px;
-            font-size: 16px;
-        }
-
-        /* 月曆彈窗樣式區塊 */
+        
         #calendarLayer {
             position: fixed;
             inset: 0;
-            background: white;
+            background: #f8f9fa;
             display: none;
             flex-direction: column;
-            padding: 20px;
+            padding: 25px;
             z-index: 998;
             overflow-y: auto;
         }
@@ -164,7 +168,7 @@
         .cal-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
+            gap: 8px;
             max-width: 600px;
             margin: 0 auto;
             width: 100%;
@@ -172,27 +176,25 @@
         .cal-day-name {
             text-align: center;
             font-weight: bold;
-            background: #eee;
-            padding: 5px;
-            border: 1px solid #ccc;
+            background: #edf2f7;
+            padding: 8px;
+            border-radius: 4px;
+            color: #4a5568;
         }
         .cal-date-cell {
             aspect-ratio: 1 / 1;
-            border: 1px solid #ccc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
             background: #fff;
-            cursor: default; 
             box-sizing: border-box; 
         }
-        .cal-date-num {
-            font-size: 1.1em;
-        }
+        /* 月曆超標提示改為淺紅色圓點或底色 */
+        .cal-date-cell.bp-high { background-color: #fff5f5; border-color: #feb2b2; }
 
-        /* 新增註解：健康報告 PDF 預覽用隱藏區塊 */
         #pdfTemplate {
             display: none;
             padding: 40px;
@@ -204,39 +206,41 @@
 
 <div id="authLayer">
     <div id="authBox">
-        <h3>請輸入密碼</h3>
-        <input type="password" id="authPwd" placeholder="密碼">
-        <button onclick="verifyPassword()">驗證</button>
-        <div id="authMsg"></div>
+        <h3 style="margin-top:0;">系統安全驗證</h3>
+        <p style="color:#718096; font-size:14px;">請輸入存取密碼以同步健康紀錄</p>
+        <input type="password" id="authPwd" placeholder="請輸入密碼" style="margin-bottom:15px;">
+        <button onclick="verifyPassword()" style="width:100%; background:#3182ce; color:white;">驗證並登入</button>
+        <div id="authMsg" style="margin-top:10px; color:#e53e3e; font-size:14px;"></div>
     </div>
 </div>
 
 <div id="chartLayer">
-    <div style="text-align:right;">
-        <button onclick="toggleChart(false)">關閉分析面板</button>
+    <div style="text-align:right; margin-bottom:15px;">
+        <button onclick="toggleChart(false)" style="background:#4a5568; color:white;">關閉分析面板</button>
     </div>
-    <div style="text-align:center; margin-bottom:10px;">
-        <h2 style="font-size:24px; margin:0;">健康數據分析視窗</h2>
+    <div style="text-align:center; margin-bottom:25px;">
+        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據分析</h2>
+        <p style="color:#718096;">數據根據您的歷史紀錄即時計算</p>
     </div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; flex:1;">
-        <div style="height:300px;"><canvas id="bpChart"></canvas></div>
-        <div style="height:300px;"><canvas id="weekChart"></canvas></div>
-        <div style="height:300px; grid-column: span 2;"><canvas id="distributionChart"></canvas></div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; flex:1; max-width:1200px; margin:0 auto; width:100%;">
+        <div style="height:350px; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);"><canvas id="bpChart"></canvas></div>
+        <div style="height:350px; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);"><canvas id="weekChart"></canvas></div>
+        <div style="height:350px; grid-column: span 2; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);"><canvas id="distributionChart"></canvas></div>
     </div>
 </div>
 
 <div id="calendarLayer">
-    <div style="text-align:right;">
-        <button onclick="toggleCalendar(false)">關閉月曆</button>
+    <div style="text-align:right; margin-bottom:15px;">
+        <button onclick="toggleCalendar(false)" style="background:#4a5568; color:white;">關閉月曆</button>
     </div>
     <div class="cal-header">
         <button onclick="changeCalMonth(-1)">上個月</button>
-        <h2 id="calTitle">2024-01</h2>
+        <h2 id="calTitle" style="margin:0; color:#2d3748;">2024年01月</h2>
         <button onclick="changeCalMonth(1)">下個月</button>
     </div>
     <div id="calGrid" class="cal-grid"></div>
-    <div style="text-align:center; margin-top:20px; color:#666; font-size:14px;">
-        註：粉紅色代表該日有血壓超標紀錄，滑鼠指向日期可顯示當日數值
+    <div style="text-align:center; margin-top:20px; color:#718096; font-size:14px;">
+        註：淺紅色區塊代表該日曾有收縮壓超過140或舒張壓超過90之紀錄
     </div>
 </div>
 
@@ -248,21 +252,23 @@
 </div>
 
 <div id="stockReminder">藥物剩餘量警告：庫存即將不足，請記得回診領藥</div>
-<div id="medReminder" style="display:none;">今日尚未勾選任何已服藥紀錄</div>
+<div id="medReminder" style="display:none;">提示：今日尚未勾選任何已服藥紀錄</div>
 <div id="avgInfo" style="display:none;"></div>
 
 <h1>血壓/用藥紀錄表</h1>
 
-<div class="filter-section">
+<div class="filter-section" style="text-align:center; margin-bottom:20px;">
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
-    <button class="add-btn" onclick="downloadCSV()">下載CSV</button>
-    <button class="add-btn" style="background-color:#e1f5fe;" onclick="toggleChart(true)">顯示數據分析</button>
-    <button class="add-btn" style="background-color:#f1f8e9;" onclick="toggleCalendar(true)">顯示月曆檢視</button>
-    <button class="add-btn" style="background-color:#fff9c4;" onclick="generatePDF()">下載回診報告</button>
-    <span style="margin-left:15px;">剩餘藥量：</span>
-    <input type="number" id="drugStock" style="width:60px;" onchange="updateStock(this.value)"> 天
-    <span style="margin-left:15px;">月份篩選：</span>
-    <select id="monthFilter" onchange="loadRecords()"></select>
+    <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
+    <button class="add-btn" style="background-color:#48bb78;" onclick="toggleChart(true)">顯示數據分析</button>
+    <button class="add-btn" style="background-color:#38b2ac;" onclick="toggleCalendar(true)">月曆檢視</button>
+    <button class="add-btn" style="background-color:#ed8936;" onclick="generatePDF()">下載回診報告</button>
+    <div style="margin-top:15px; color:#4a5568;">
+        <span>剩餘藥量：</span>
+        <input type="number" id="drugStock" style="width:80px; display:inline-block;" onchange="updateStock(this.value)"> 天
+        <span style="margin-left:20px;">月份篩選：</span>
+        <select id="monthFilter" style="width:140px; display:inline-block;" onchange="loadRecords()"></select>
+    </div>
 </div>
 
 <div class="table-wrapper">
@@ -288,10 +294,8 @@
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
-    // 新增註解：藥物庫存存儲鍵修正為對齊 Firebase Rules 的路徑
     const STOCK_KEY = "meta/drugStock";
     let chartInstance = null; 
-    // 新增註解：多圖表實體
     let weekChartInstance = null;
     let distChartInstance = null;
     let calViewDate = new Date();
@@ -307,17 +311,13 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-
-    const database = firebase.database(undefined, {
-        experimentalForceLongPolling: true
-    });
-
+    const database = firebase.database(undefined, { experimentalForceLongPolling: true });
     const dbRef = database.ref("bloodPressureRecords");
 
     function verifyPassword() {
         const pwd = document.getElementById("authPwd").value;
         const msg = document.getElementById("authMsg");
-        msg.textContent = "驗證中";
+        msg.textContent = "驗證中...";
 
         database.ref("__auth_guard").set({ pwd: pwd })
         .then(() => database.ref("__auth_guard/verified").set(true))
@@ -326,11 +326,10 @@
             document.getElementById("authLayer").style.display = "none";
             initMonthFilter(); 
             loadRecords();
-            // 新增註解：驗證成功後執行雲端藥物庫存同步
             loadStock();
         })
         .catch(() => {
-            msg.textContent = "密碼錯誤";
+            msg.textContent = "驗證失敗，請檢查密碼是否正確";
         });
     }
 
@@ -343,17 +342,13 @@
         };
     }
 
-    // 新增註解：修正後的藥物庫存加載邏輯，解決重新整理後空白問題
     function loadStock() {
-        // 先顯示本地數據墊底，避免畫面空白
         const localStock = localStorage.getItem("drugStockCount") || 0;
         document.getElementById("drugStock").value = localStock;
         checkStockAlert(localStock);
 
-        // 從 Firebase 獲取最新雲端數據
         database.ref(STOCK_KEY).once("value").then(snapshot => {
             const cloudStock = snapshot.val();
-            // 只有雲端有資料時才進行更新，避免覆蓋本地資料
             if (cloudStock !== null && cloudStock !== undefined) {
                 document.getElementById("drugStock").value = cloudStock;
                 localStorage.setItem("drugStockCount", cloudStock);
@@ -364,21 +359,17 @@
         });
     }
 
-    // 新增註解：修正後的藥物庫存更新邏輯，確保寫入雲端路徑 meta/drugStock
     function updateStock(val) {
         if (val === "" || val === undefined) return;
         const numVal = Number(val);
         localStorage.setItem("drugStockCount", numVal);
-        // 同步寫入雲端
         database.ref(STOCK_KEY).set(numVal);
         checkStockAlert(numVal);
     }
 
-    // 新增註解：修正剩餘0顆時不顯示提醒的問題
     function checkStockAlert(stock) {
         const reminder = document.getElementById("stockReminder");
         const sCount = Number(stock);
-        // 修改註解：修正邏輯條件，確保 0 到 7 顆皆顯示橙色警告
         if (sCount <= 7) {
             reminder.style.display = "block";
             reminder.textContent = "藥物剩餘量警告：目前僅剩 " + sCount + " 顆，請儘速回診領藥";
@@ -387,14 +378,11 @@
         }
     }
 
-    /* 動態生成月份選單，預設選取當前月份 */
     function initMonthFilter() {
         const selector = document.getElementById("monthFilter");
         if (selector.options.length > 0) return;
-
         const now = new Date();
         const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
-        
         const defaultOpt = document.createElement("option");
         defaultOpt.value = currentMonth;
         defaultOpt.textContent = currentMonth;
@@ -410,16 +398,11 @@
         });
     }
 
-    /* 根據現有資料更新月份篩選選單 */
     function updateMonthList(data) {
         const selector = document.getElementById("monthFilter");
         const currentVal = selector.value;
         const months = new Set();
-        
-        data.forEach(r => {
-            if (r.date) months.add(r.date.substring(0, 7));
-        });
-
+        data.forEach(r => { if (r.date) months.add(r.date.substring(0, 7)); });
         const sortedMonths = Array.from(months).sort().reverse();
         selector.innerHTML = "";
         sortedMonths.forEach(m => {
@@ -428,7 +411,6 @@
             opt.textContent = m;
             selector.appendChild(opt);
         });
-        
         if (currentVal && Array.from(months).includes(currentVal)) {
             selector.value = currentVal;
         } else if (sortedMonths.length > 0) {
@@ -436,22 +418,18 @@
         }
     }
 
-    // 新增註解：WHO 血壓分級判定邏輯
     function getWHOCategory(sys, dia) {
         const s = Number(sys);
         const d = Number(dia);
         if (!s || !d) return "";
-        if (s >= 160 || d >= 100) return "bp-stage2"; // 二級高血壓
-        if (s >= 140 || d >= 90) return "bp-stage1"; // 一級高血壓
-        if (s >= 120 || d >= 80) return "bp-elevated"; // 偏高
-        return "bp-normal"; // 正常
+        if (s >= 160 || d >= 100) return "bp-stage2"; 
+        if (s >= 140 || d >= 90) return "bp-stage1"; 
+        if (s >= 120 || d >= 80) return "bp-elevated"; 
+        return "bp-normal"; 
     }
 
-    /* 靜默儲存函式 */
     function updateSilent(index, key, value, inputElement) {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        
-        // 新增註解：藥物庫存扣除邏輯，修正為從當前畫面輸入框獲取數值
         if (key === 'tookMed') {
             let currentStock = Number(document.getElementById("drugStock").value) || 0;
             if (value === true && !data[index].tookMed) {
@@ -459,162 +437,105 @@
             } else if (value === false && data[index].tookMed) {
                 currentStock += 1;
             }
-            // 觸發雲端同步與警告檢查
             updateStock(currentStock);
             document.getElementById("drugStock").value = currentStock;
         }
-
         data[index][key] = value;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         dbRef.set(data);
 
-        // 修改註解：套用 WHO 分級變色
+        // 更新輸入框顏色
         if (inputElement && (key === 'sys' || key === 'dia')) {
-            const parentTdSys = inputElement.closest('tr').querySelector('td:nth-child(3)');
-            const parentTdDia = inputElement.closest('tr').querySelector('td:nth-child(4)');
-            const sysVal = inputElement.closest('tr').querySelector('td:nth-child(3) input').value;
-            const diaVal = inputElement.closest('tr').querySelector('td:nth-child(4) input').value;
-            
-            const category = getWHOCategory(sysVal, diaVal);
-            parentTdSys.className = category;
-            parentTdDia.className = category;
+            const row = inputElement.closest('tr');
+            const sysInput = row.querySelector('td:nth-child(3) input');
+            const diaInput = row.querySelector('td:nth-child(4) input');
+            const category = getWHOCategory(sysInput.value, diaInput.value);
+            sysInput.className = category;
+            diaInput.className = category;
         }
     }
 
     function render(data) {
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
-
         const nowLocal = new Date();
-        const yyyy = nowLocal.getFullYear();
-        const mm = String(nowLocal.getMonth() + 1).padStart(2, '0');
-        const dd = String(nowLocal.getDate()).padStart(2, '0');
-        const today = `${yyyy}-${mm}-${dd}`;
-        
+        const today = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
         const filterMonth = document.getElementById("monthFilter").value;
-
-        let todaySys = 0;
-        let todayDia = 0;
-        let todayCount = 0;
-        let tookMedToday = false;
+        let todaySys = 0, todayDia = 0, todayCount = 0, tookMedToday = false;
 
         data.forEach(r => {
             if (r.date === today) {
-                if (r.sys && r.dia) {
-                    todaySys += Number(r.sys);
-                    todayDia += Number(r.dia);
-                    todayCount++;
-                }
+                if (r.sys && r.dia) { todaySys += Number(r.sys); todayDia += Number(r.dia); todayCount++; }
                 if (r.tookMed) tookMedToday = true;
             }
         });
 
         document.getElementById("medReminder").style.display = tookMedToday ? "none" : "block";
-
         if (todayCount > 0) {
             document.getElementById("avgInfo").style.display = "block";
-            document.getElementById("avgInfo").textContent =
-                "今日平均收縮壓：" + Math.round(todaySys / todayCount) +
-                "　今日平均舒張壓：" + Math.round(todayDia / todayCount);
+            document.getElementById("avgInfo").textContent = "今日平均收縮壓：" + Math.round(todaySys / todayCount) + " / 舒張壓：" + Math.round(todayDia / todayCount);
         } else {
             document.getElementById("avgInfo").style.display = "none";
         }
 
         data.forEach((record, index) => {
             if (record.date.substring(0, 7) !== filterMonth) return;
-
             const tr = document.createElement("tr");
             const whoClass = getWHOCategory(record.sys, record.dia);
-
             tr.innerHTML = `
                 <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
                 <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
-                <td class="${whoClass}">
-                    <input type="number" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)">
-                </td>
-                <td class="${whoClass}">
-                    <input type="number" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)">
-                </td>
+                <td><input type="number" class="${whoClass}" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)"></td>
+                <td><input type="number" class="${whoClass}" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)"></td>
                 <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
-                <td>
-                    <input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)">
-                </td>
-                <td>
-                    <input type="checkbox" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)">
-                </td>
-                <td><button onclick="remove(${index})">刪除</button></td>
+                <td><input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)"></td>
+                <td><input type="checkbox" style="width:20px; height:20px;" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)"></td>
+                <td><button onclick="remove(${index})" style="background:#fed7d7; color:#c53030;">刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // 新增註解：專業健康報告 PDF 生成功能，並修正內容空白問題
     function generatePDF() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         const filterMonth = document.getElementById("monthFilter").value;
         const monthData = data.filter(r => r.date.substring(0, 7) === filterMonth);
-
-        if (monthData.length === 0) {
-            alert("目前選擇的月份沒有紀錄可以匯出");
-            return;
-        }
-
+        if (monthData.length === 0) { alert("此月份無紀錄"); return; }
         const template = document.getElementById("pdfTemplate");
-        // 修改註解：確保元素在抓取前是可見的，以避免 html2pdf 擷取到空白
         template.style.display = "block"; 
-
         document.getElementById("pdfDateRange").textContent = "報告月份：" + filterMonth;
-        
-        // 簡易統計
         const sysValues = monthData.filter(r => r.sys).map(r => Number(r.sys));
         const avgSys = sysValues.length > 0 ? Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length) : 0;
         const maxSys = sysValues.length > 0 ? Math.max(...sysValues) : 0;
-        
         document.getElementById("pdfStats").innerHTML = `
-            <div style="padding:10px; background:#eee; text-align:center;">平均收縮壓<br><b style="font-size:20px;">${avgSys}</b></div>
-            <div style="padding:10px; background:#eee; text-align:center;">最高收縮壓<br><b style="font-size:20px;">${maxSys}</b></div>
-            <div style="padding:10px; background:#eee; text-align:center;">測量筆數<br><b style="font-size:20px;">${monthData.length}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">平均收縮壓<br><b style="font-size:24px; color:#2b6cb0;">${avgSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:24px; color:#c53030;">${maxSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
         `;
-
-        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px;">
-            <thead><tr><th style="border:1px solid #333;">日期</th><th style="border:1px solid #333;">收縮壓</th><th style="border:1px solid #333;">舒張壓</th><th style="border:1px solid #333;">備註</th></tr></thead><tbody>`;
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0;">
+            <thead><tr style="background:#edf2f7;"><th style="border:1px solid #cbd5e0; padding:10px;">時間</th><th style="border:1px solid #cbd5e0; padding:10px;">收縮壓</th><th style="border:1px solid #cbd5e0; padding:10px;">舒張壓</th><th style="border:1px solid #cbd5e0; padding:10px;">備註</th></tr></thead><tbody>`;
         monthData.forEach(r => {
-            tableHtml += `<tr><td style="border:1px solid #333; padding:5px; text-align:center;">${r.date} ${r.time}</td>
-            <td style="border:1px solid #333; padding:5px; text-align:center;">${r.sys}</td>
-            <td style="border:1px solid #333; padding:5px; text-align:center;">${r.dia}</td>
-            <td style="border:1px solid #333; padding:5px;">${r.note || ""}</td></tr>`;
+            tableHtml += `<tr><td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
+            <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
+            <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.dia}</td>
+            <td style="border:1px solid #cbd5e0; padding:8px;">${r.note || ""}</td></tr>`;
         });
         tableHtml += `</tbody></table>`;
         document.getElementById("pdfTableArea").innerHTML = tableHtml;
-
-        const opt = {
-            margin: 10,
-            filename: `血壓報告_${filterMonth}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        // 修改註解：生成結束後將範本隱藏
-        html2pdf().from(template).set(opt).save().then(() => {
-            template.style.display = "none";
-        });
+        const opt = { margin: 10, filename: `血壓報告_${filterMonth}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+        html2pdf().from(template).set(opt).save().then(() => { template.style.display = "none"; });
     }
 
-    /* 趨勢圖顯示切換與繪製邏輯 */
     function toggleChart(show) {
         const layer = document.getElementById("chartLayer");
-        if (!show) {
-            layer.style.display = "none";
-            return;
-        }
+        if (!show) { layer.style.display = "none"; return; }
         layer.style.display = "flex";
         
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
         const last30 = validData.slice(-30);
 
-        // 1. 趨勢圖
+        // 1. 真實趨勢圖
         const ctx = document.getElementById('bpChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
         chartInstance = new Chart(ctx, {
@@ -622,65 +543,73 @@
             data: {
                 labels: last30.map(r => r.date.substring(5) + " " + r.time),
                 datasets: [
-                    { label: '收縮壓', data: last30.map(r => r.sys), borderColor: '#ff5252', fill: false },
-                    { label: '舒張壓', data: last30.map(r => r.dia), borderColor: '#448aff', fill: false }
+                    { label: '收縮壓', data: last30.map(r => r.sys), borderColor: '#e53e3e', tension: 0.3, fill: false },
+                    { label: '舒張壓', data: last30.map(r => r.dia), borderColor: '#3182ce', tension: 0.3, fill: false }
                 ]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '最近30筆趨勢分析' } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '最近30筆趨勢分析', font: { size: 16 } } } }
         });
 
-        // 2. 周趨勢圖 (新增註解：按周統計平均值)
+        // 2. 真實週趨勢圖（新增計算邏輯）
+        const weekSums = [0,0,0,0,0,0,0], weekCounts = [0,0,0,0,0,0,0];
+        validData.forEach(r => {
+            const day = new Date(r.date).getDay();
+            weekSums[day] += Number(r.sys);
+            weekCounts[day]++;
+        });
+        const weekAverages = weekSums.map((sum, i) => weekCounts[i] > 0 ? Math.round(sum / weekCounts[i]) : 0);
+
         const weekCtx = document.getElementById('weekChart').getContext('2d');
         if (weekChartInstance) weekChartInstance.destroy();
         weekChartInstance = new Chart(weekCtx, {
             type: 'bar',
             data: {
                 labels: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'],
-                datasets: [{ label: '收縮壓周平均', data: [125, 130, 128, 135, 122, 127, 129], backgroundColor: '#81c784' }]
+                datasets: [{ label: '收縮壓週平均', data: weekAverages, backgroundColor: '#81e6d9' }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '生活作息周分析' } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '生活作息週分析（真實數據）', font: { size: 16 } } } }
         });
 
-        // 3. 分佈圖 (新增註解：WHO 分級佔比)
+        // 3. 真實分佈圖（新增計算邏輯）
+        let dist = [0,0,0,0]; // 正常, 偏高, 一級, 二級
+        validData.forEach(r => {
+            const cat = getWHOCategory(r.sys, r.dia);
+            if (cat === "bp-normal") dist[0]++;
+            else if (cat === "bp-elevated") dist[1]++;
+            else if (cat === "bp-stage1") dist[2]++;
+            else if (cat === "bp-stage2") dist[3]++;
+        });
+
         const distCtx = document.getElementById('distributionChart').getContext('2d');
         if (distChartInstance) distChartInstance.destroy();
         distChartInstance = new Chart(distCtx, {
             type: 'doughnut',
             data: {
                 labels: ['正常', '偏高', '一級高血壓', '二級高血壓'],
-                datasets: [{ data: [15, 8, 5, 2], backgroundColor: ['#e8f5e9', '#fff3e0', '#ffebee', '#ffcdd2'] }]
+                datasets: [{ data: dist, backgroundColor: ['#c6f6d5', '#feebc8', '#fed7d7', '#feb2b2'] }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '血壓分級健康分佈' } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '血壓分級健康分佈（真實數據）', font: { size: 16 } } } }
         });
     }
 
-    /* 月曆顯示切換與生成邏輯 */
     function toggleCalendar(show) {
         const layer = document.getElementById("calendarLayer");
-        if (!show) {
-            layer.style.display = "none";
-            return;
-        }
+        if (!show) { layer.style.display = "none"; return; }
         layer.style.display = "flex";
         renderCalendar();
     }
 
-    /* 月曆月份切換函式 */
     function changeCalMonth(offset) {
         calViewDate.setMonth(calViewDate.getMonth() + offset);
         renderCalendar();
     }
 
-    /* 月曆核心渲染函式 */
     function renderCalendar() {
         const grid = document.getElementById("calGrid");
         const title = document.getElementById("calTitle");
-        const year = calViewDate.getFullYear();
-        const month = calViewDate.getMonth();
-        
+        const year = calViewDate.getFullYear(), month = calViewDate.getMonth();
         title.textContent = year + " 年 " + (month + 1) + " 月";
         grid.innerHTML = "";
-
         const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
         dayNames.forEach(d => {
             const div = document.createElement("div");
@@ -688,64 +617,42 @@
             div.textContent = d;
             grid.appendChild(div);
         });
-
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-
-        for (let i = 0; i < firstDay; i++) {
-            grid.appendChild(document.createElement("div"));
-        }
-
+        for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement("div")); }
         for (let d = 1; d <= daysInMonth; d++) {
             const cell = document.createElement("div");
             cell.className = "cal-date-cell";
             const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
             const dayRecords = data.filter(r => r.date === dateStr && r.sys && r.dia);
-
-            const hasHighBP = dayRecords.some(r => (Number(r.sys) >= 140 || Number(r.dia) >= 90));
-            if (hasHighBP) cell.classList.add("bp-high");
-
+            if (dayRecords.some(r => (Number(r.sys) >= 140 || Number(r.dia) >= 90))) cell.classList.add("bp-high");
             if (dayRecords.length > 0) {
-                let tooltipText = "";
-                dayRecords.forEach(r => {
-                    tooltipText += `時間：${r.time} 收縮壓：${r.sys} 舒張壓：${r.dia}\n`;
-                });
-                cell.title = tooltipText.trim();
+                let tooltip = "";
+                dayRecords.forEach(r => tooltip += `${r.time} 壓：${r.sys}/${r.dia}\n`);
+                cell.title = tooltip.trim();
             }
-
-            cell.innerHTML = `<span class="cal-date-num">${d}</span>`;
+            cell.innerHTML = `<span style="font-weight:600;">${d}</span>`;
             grid.appendChild(cell);
         }
     }
 
-    function save(data) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        dbRef.set(data);
-    }
+    function save(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); dbRef.set(data); }
 
     function addRecord() {
         const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const date = `${yyyy}-${mm}-${dd}`;
+        const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
-        
-        const newMonth = date.substring(0, 7);
         save(data);
-        
-        const selector = document.getElementById("monthFilter");
         updateMonthList(data);
-        selector.value = newMonth;
+        document.getElementById("monthFilter").value = date.substring(0, 7);
         render(data);
     }
 
     function remove(index) {
-        if (!confirm("確定要刪除這筆紀錄嗎")) return;
+        if (!confirm("確定要刪除這筆紀錄嗎？")) return;
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         data.splice(index, 1);
         save(data);
@@ -755,18 +662,14 @@
     function downloadCSV() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         if (!data.length) return;
-
         let csv = "日期,時間,收縮壓,舒張壓,心跳,備註,已服藥\n";
-        data.forEach(r => {
-            csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note},${r.tookMed ? "是" : "否"}\n`;
-        });
-
+        data.forEach(r => { csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note},${r.tookMed ? "是" : "否"}\n`; });
         const bom = "\uFEFF";
         const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "blood_pressure_records.csv";
+        a.download = `血壓紀錄_${new Date().toLocaleDateString()}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     }
@@ -774,4 +677,3 @@
 
 </body>
 </html>
-

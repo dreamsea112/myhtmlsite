@@ -512,13 +512,24 @@
             <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:24px; color:#c53030;">${maxSys}</b></div>
             <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
         `;
-        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0;">
-            <thead><tr style="background:#edf2f7;"><th style="border:1px solid #cbd5e0; padding:10px;">時間</th><th style="border:1px solid #cbd5e0; padding:10px;">收縮壓</th><th style="border:1px solid #cbd5e0; padding:10px;">舒張壓</th><th style="border:1px solid #cbd5e0; padding:10px;">備註</th></tr></thead><tbody>`;
+        // 修改處：優化 PDF 表格寬度分配，縮小字體並增加備註空間
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 12px;">
+            <thead>
+                <tr style="background:#edf2f7;">
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 30%;">時間</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 15%;">收縮壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 15%;">舒張壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 40%;">備註</th>
+                </tr>
+            </thead>
+            <tbody>`;
         monthData.forEach(r => {
-            tableHtml += `<tr><td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
-            <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
-            <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.dia}</td>
-            <td style="border:1px solid #cbd5e0; padding:8px;">${r.note || ""}</td></tr>`;
+            tableHtml += `<tr>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.dia}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:left; word-wrap: break-word; white-space: normal;">${r.note || ""}</td>
+            </tr>`;
         });
         tableHtml += `</tbody></table>`;
         document.getElementById("pdfTableArea").innerHTML = tableHtml;

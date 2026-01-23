@@ -196,14 +196,26 @@
         .cal-date-cell.bp-high { background-color: #fff5f5; border-color: #feb2b2; }
 
         #pdfTemplate {
-            display: none;
-            padding: 30px;
-            color: #333;
-            background: white;
-            /* 鎖死寬度，防止 html2pdf 自動展開 */
-            width: 720px; 
-            margin: 0 auto;
-        }
+    display: none;
+    padding: 15mm; /* 標準 A4 留白 */
+    background: white;
+    width: 175mm;  /* 嚴格鎖定 A4 可列印寬度，避開邊緣 */
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* 防止表格行被 PDF 暴力切斷的關鍵 */
+#pdfTableArea tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto;
+}
+
+#pdfTableArea table {
+    width: 100%;
+    table-layout: fixed; /* 強制執行我們設定的寬度 */
+    word-wrap: break-word;
+}
+
     </style>
 </head>
 <body>
@@ -514,15 +526,16 @@ function generatePDF() {
     const avgSys = sysValues.length > 0 ? Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length) : 0;
     const maxSys = sysValues.length > 0 ? Math.max(...sysValues) : 0;
     
-    // 修正上方統計區塊：使用百分比寬度，防止爆版
+    // 統計區塊改用 Flex 佈局，確保不會溢出
     document.getElementById("pdfStats").innerHTML = `
-        <div style="padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">平均收縮壓<br><b style="font-size:20px; color:#2b6cb0;">${avgSys}</b></div>
-        <div style="padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:20px; color:#c53030;">${maxSys}</b></div>
-        <div style="padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:20px; color:#2d3748;">${monthData.length}</b></div>
+        <div style="flex:1; margin:5px; padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">平均收縮壓<br><b style="font-size:20px; color:#2b6cb0;">${avgSys}</b></div>
+        <div style="flex:1; margin:5px; padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:20px; color:#c53030;">${maxSys}</b></div>
+        <div style="flex:1; margin:5px; padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:20px; color:#2d3748;">${monthData.length}</b></div>
     `;
+    document.getElementById("pdfStats").style.display = "flex";
 
-    // 關鍵修正：使用 width: 100% 並精確分配各欄百分比
-    let tableHtml = `<table style="width: 100%; border-collapse:collapse; margin-top:20px; border:1px solid #cbd5e0; table-layout: fixed; font-size: 11px;">
+    // 嚴格分配寬度：時間(25%)、收縮(12%)、舒張(12%)、備註(51%)
+    let tableHtml = `<table style="border-collapse:collapse; margin-top:20px; border:1px solid #cbd5e0;">
         <thead>
             <tr style="background:#edf2f7;">
                 <th style="border:1px solid #cbd5e0; padding:8px; width: 25%;">時間</th>
@@ -538,24 +551,24 @@ function generatePDF() {
             <td style="border:1px solid #cbd5e0; padding:6px; text-align:center;">${r.date}<br>${r.time}</td>
             <td style="border:1px solid #cbd5e0; padding:6px; text-align:center;">${r.sys}</td>
             <td style="border:1px solid #cbd5e0; padding:6px; text-align:center;">${r.dia}</td>
-            <td style="border:1px solid #cbd5e0; padding:6px; text-align:left; word-break: break-all; white-space: normal; line-height: 1.4;">${r.note || ""}</td>
+            <td style="border:1px solid #cbd5e0; padding:6px; text-align:left; font-size:10px; word-break: break-all; white-space: normal; overflow: hidden;">${r.note || ""}</td>
         </tr>`;
     });
     tableHtml += `</tbody></table>`;
     document.getElementById("pdfTableArea").innerHTML = tableHtml;
     
     const opt = { 
-        margin: [10, 5, 10, 5], // 上, 左, 下, 右 的邊距
+        margin: 0, // 因為內部 template 已經設了 15mm 的 padding，這裡設 0 避免雙重邊距
         filename: `血壓報告_${filterMonth}.pdf`, 
         image: { type: 'jpeg', quality: 0.98 }, 
         html2canvas: { 
             scale: 2, 
             useCORS: true, 
             letterRendering: true,
-            width: template.clientWidth // 動態抓取寬度
+            windowWidth: 794 // 模擬 A4 標準解析度寬度
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: 'css', avoid: 'tr' } 
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // 強化避開切斷的邏輯
     };
 
     html2pdf().from(template).set(opt).save().then(() => { 

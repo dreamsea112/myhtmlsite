@@ -200,6 +200,7 @@
             padding: 40px;
             color: #333;
             background: white;
+            width: 730px; /* 固定範本容器寬度，確保 html2pdf 擷取範圍精確 */
         }
     </style>
 </head>
@@ -518,15 +519,15 @@
             <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
         `;
 
-        // 修改內容：將寬度從百分比改為固定像素 (px) 以進行細調
-        // 這裡設定總寬度參考 A4 範圍，請根據需要調整以下 px 數值
-        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 11px;">
+        // 核心修改：移除外層 overflow 影響，並將備註寬度微調至 450px 以預留邊框空間 (總計約 690px)
+        // 增加 table-layout: fixed 強製表格遵守寬度不溢出
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #cbd5e0; table-layout: fixed; font-size: 11px;">
             <thead>
                 <tr style="background:#edf2f7;">
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 100px;">時間</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 110px;">時間</th>
                     <th style="border:1px solid #cbd5e0; padding:10px; width: 65px;">收縮壓</th>
                     <th style="border:1px solid #cbd5e0; padding:10px; width: 65px;">舒張壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 490px;">備註</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 450px;">備註</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -543,12 +544,12 @@
         tableHtml += `</tbody></table>`;
         document.getElementById("pdfTableArea").innerHTML = tableHtml;
         
-        // 核心修改：優化 opt 設定，避免自動插入分頁符導致第一頁空白
+        // 優化 opt 設定，避免自動插入分頁符導致第一頁空白
         const opt = { 
             margin: 10, 
             filename: `血壓報告_${filterMonth}.pdf`, 
             image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2, useCORS: true, logging: false }, 
+            html2canvas: { scale: 2, useCORS: true, logging: false, width: 750 }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: 'css', avoid: 'tr' } // 避免表格列跨頁斷裂
         };
@@ -582,7 +583,7 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '最近30筆趨勢分析', font: { size: 16 } } } }
         });
 
-        // 2. 真實週趨勢圖（新增計算邏輯）
+        // 2. 真實週趨勢圖
         const weekSums = [0,0,0,0,0,0,0], weekCounts = [0,0,0,0,0,0,0];
         validData.forEach(r => {
             const day = new Date(r.date).getDay();
@@ -602,7 +603,7 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '生活作息週分析（真實數據）', font: { size: 16 } } } }
         });
 
-        // 3. 真實分佈圖（新增計算邏輯）
+        // 3. 真實分佈圖
         let dist = [0,0,0,0]; // 正常, 偏高, 一級, 二級
         validData.forEach(r => {
             const cat = getWHOCategory(r.sys, r.dia);
@@ -709,8 +710,3 @@
 
 </body>
 </html>
-
-
-
-
-

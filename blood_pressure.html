@@ -220,7 +220,7 @@
         <button onclick="toggleChart(false)" style="background:#4a5568; color:white;">關閉分析面板</button>
     </div>
     <div style="text-align:center; margin-bottom:25px;">
-        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據 analysis</h2>
+        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據分析</h2>
         <p style="color:#718096;">數據根據您的歷史紀錄即時計算</p>
     </div>
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; flex:1; max-width:1200px; margin:0 auto; width:100%;">
@@ -518,21 +518,21 @@
             <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
         `;
 
-        // 修改內容：調整表格欄位寬度比例，總計為 100% 以符合頁面寬度
-        // 時間佔 25%, 收縮壓佔 15%, 舒張壓佔 15%, 備註佔 45%
+        // 修改內容：調整表格欄位寬度比例，加總為 100%
+        // 時間佔 20%, 收縮壓佔 12%, 舒張壓佔 12%, 備註佔 56%
         let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 11px;">
             <thead>
                 <tr style="background:#edf2f7;">
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 25%;">時間</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 15%;">收縮壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 15%;">舒張壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 45%;">備註</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 20%;">時間</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 12%;">收縮壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 12%;">舒張壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 56%;">備註</th>
                 </tr>
             </thead>
             <tbody>`;
         
         monthData.forEach(r => {
-            // 備註欄位加入 word-break: break-all 確保不溢出
+            // 備註欄位加入 word-break: break-all 確保不溢出且自動換行
             tableHtml += `<tr>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
@@ -550,7 +550,7 @@
             image: { type: 'jpeg', quality: 0.98 }, 
             html2canvas: { scale: 2, useCORS: true, logging: false }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: 'css', avoid: 'tr' } // 避免表格列跨頁斷裂，且僅依據內容自動換頁
+            pagebreak: { mode: 'css', avoid: 'tr' } // 避免表格列跨頁斷裂
         };
 
         html2pdf().from(template).set(opt).save().then(() => { 
@@ -709,5 +709,3 @@
 
 </body>
 </html>
-
-

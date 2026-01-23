@@ -433,7 +433,7 @@
         if (key === 'tookMed') {
             let currentStock = Number(document.getElementById("drugStock").value) || 0;
             if (value === true && !data[index].tookMed) {
-                currentStock = Math.max(0, currentStock - -1);
+                currentStock = Math.max(0, currentStock - 1);
             } else if (value === false && data[index].tookMed) {
                 currentStock += 1;
             }

@@ -219,7 +219,7 @@
         <button onclick="toggleChart(false)" style="background:#4a5568; color:white;">關閉分析面板</button>
     </div>
     <div style="text-align:center; margin-bottom:25px;">
-        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據分析</h2>
+        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據 analysis</h2>
         <p style="color:#718096;">數據根據您的歷史紀錄即時計算</p>
     </div>
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; flex:1; max-width:1200px; margin:0 auto; width:100%;">
@@ -240,7 +240,7 @@
     </div>
     <div id="calGrid" class="cal-grid"></div>
     <div style="text-align:center; margin-top:20px; color:#718096; font-size:14px;">
-        註：淺紅色區塊代表該日曾有收縮壓超過140或舒張壓超過90之紀錄
+        註記：淺紅色區塊代表該日曾有收縮壓超過140或舒張壓超過90之紀錄
     </div>
 </div>
 
@@ -433,7 +433,7 @@
         if (key === 'tookMed') {
             let currentStock = Number(document.getElementById("drugStock").value) || 0;
             if (value === true && !data[index].tookMed) {
-                currentStock = Math.max(0, currentStock - 1);
+                currentStock = Math.max(0, currentStock - -1);
             } else if (value === false && data[index].tookMed) {
                 currentStock += 1;
             }
@@ -512,7 +512,7 @@
             <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:24px; color:#c53030;">${maxSys}</b></div>
             <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
         `;
-        // 修改處：優化 PDF 表格寬度分配，縮小字體並增加備註空間
+        // 修改處：優化 PDF 表格寬度分配，強制固定佈局並處理備註換行與跨頁
         let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 12px;">
             <thead>
                 <tr style="background:#edf2f7;">
@@ -533,7 +533,16 @@
         });
         tableHtml += `</tbody></table>`;
         document.getElementById("pdfTableArea").innerHTML = tableHtml;
-        const opt = { margin: 10, filename: `血壓報告_${filterMonth}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+        
+        // 修改處：新增 pagebreak 設定避免跨頁切斷，並確保 layout 渲染完整
+        const opt = { 
+            margin: 10, 
+            filename: `血壓報告_${filterMonth}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2, useCORS: true }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
         html2pdf().from(template).set(opt).save().then(() => { template.style.display = "none"; });
     }
 

@@ -196,26 +196,10 @@
         .cal-date-cell.bp-high { background-color: #fff5f5; border-color: #feb2b2; }
 
         #pdfTemplate {
-    display: none;
-    padding: 15mm; /* 標準 A4 留白 */
-    background: white;
-    width: 150mm;  /* 嚴格鎖定 A4 可列印寬度，避開邊緣 */
-    margin: 0;
-    box-sizing: border-box;
-}
-
-/* 防止表格行被 PDF 暴力切斷的關鍵 */
-#pdfTableArea tr {
-    page-break-inside: avoid !important;
-    page-break-after: auto;
-}
-
-#pdfTableArea table {
-    width: 100%;
-    table-layout: fixed; /* 強制執行我們設定的寬度 */
-    word-wrap: break-word;
-}
-
+            display: none;
+            padding: 40px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -235,7 +219,7 @@
         <button onclick="toggleChart(false)" style="background:#4a5568; color:white;">關閉分析面板</button>
     </div>
     <div style="text-align:center; margin-bottom:25px;">
-        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據分析</h2>
+        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據 analysis</h2>
         <p style="color:#718096;">數據根據您的歷史紀錄即時計算</p>
     </div>
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; flex:1; max-width:1200px; margin:0 auto; width:100%;">
@@ -261,8 +245,8 @@
 </div>
 
 <div id="pdfTemplate">
-    <h1 style="border-bottom: 2px solid #333; padding-bottom: 10px; margin-top: 0;">血壓健康回診報告</h1>
-    <p id="pdfDateRange" style="margin-top: 10px;"></p>
+    <h1 style="border-bottom: 2px solid #333; padding-bottom: 10px;">血壓健康回診報告</h1>
+    <p id="pdfDateRange"></p>
     <div id="pdfStats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;"></div>
     <div id="pdfTableArea"></div>
 </div>
@@ -449,7 +433,7 @@
         if (key === 'tookMed') {
             let currentStock = Number(document.getElementById("drugStock").value) || 0;
             if (value === true && !data[index].tookMed) {
-                currentStock = Math.max(0, currentStock - 1);
+                currentStock = Math.max(0, currentStock - -1);
             } else if (value === false && data[index].tookMed) {
                 currentStock += 1;
             }
@@ -512,69 +496,55 @@
         });
     }
 
-function generatePDF() {
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    const filterMonth = document.getElementById("monthFilter").value;
-    const monthData = data.filter(r => r.date.substring(0, 7) === filterMonth);
-    if (monthData.length === 0) { alert("此月份無紀錄"); return; }
-    
-    const template = document.getElementById("pdfTemplate");
-    template.style.display = "block"; 
-    document.getElementById("pdfDateRange").textContent = "報告月份：" + filterMonth;
-    
-    const sysValues = monthData.filter(r => r.sys).map(r => Number(r.sys));
-    const avgSys = sysValues.length > 0 ? Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length) : 0;
-    const maxSys = sysValues.length > 0 ? Math.max(...sysValues) : 0;
-    
-    // 統計區塊改用 Flex 佈局，確保不會溢出
-    document.getElementById("pdfStats").innerHTML = `
-        <div style="flex:1; margin:5px; padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">平均收縮壓<br><b style="font-size:20px; color:#2b6cb0;">${avgSys}</b></div>
-        <div style="flex:1; margin:5px; padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:20px; color:#c53030;">${maxSys}</b></div>
-        <div style="flex:1; margin:5px; padding:10px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:20px; color:#2d3748;">${monthData.length}</b></div>
-    `;
-    document.getElementById("pdfStats").style.display = "flex";
-
-    // 嚴格分配寬度：時間(25%)、收縮(12%)、舒張(12%)、備註(51%)
-    let tableHtml = `<table style="border-collapse:collapse; margin-top:20px; border:1px solid #cbd5e0;">
-        <thead>
-            <tr style="background:#edf2f7;">
-                <th style="border:1px solid #cbd5e0; padding:8px; width: 25%;">時間</th>
-                <th style="border:1px solid #cbd5e0; padding:8px; width: 12%;">收縮壓</th>
-                <th style="border:1px solid #cbd5e0; padding:8px; width: 12%;">舒張壓</th>
-                <th style="border:1px solid #cbd5e0; padding:8px; width: 51%;">備註</th>
-            </tr>
-        </thead>
-        <tbody>`;
-    
-    monthData.forEach(r => {
-        tableHtml += `<tr>
-            <td style="border:1px solid #cbd5e0; padding:6px; text-align:center;">${r.date}<br>${r.time}</td>
-            <td style="border:1px solid #cbd5e0; padding:6px; text-align:center;">${r.sys}</td>
-            <td style="border:1px solid #cbd5e0; padding:6px; text-align:center;">${r.dia}</td>
-            <td style="border:1px solid #cbd5e0; padding:6px; text-align:left; font-size:10px; word-break: break-all; white-space: normal; overflow: hidden;">${r.note || ""}</td>
-        </tr>`;
-    });
-    tableHtml += `</tbody></table>`;
-    document.getElementById("pdfTableArea").innerHTML = tableHtml;
-    
-    const opt = { 
-        margin: 0, // 因為內部 template 已經設了 15mm 的 padding，這裡設 0 避免雙重邊距
-        filename: `血壓報告_${filterMonth}.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { 
-            scale: 2, 
-            useCORS: true, 
-            letterRendering: true,
-            windowWidth: 794 // 模擬 A4 標準解析度寬度
-        }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // 強化避開切斷的邏輯
-    };
-
-    html2pdf().from(template).set(opt).save().then(() => { 
-        template.style.display = "none"; 
-    });
-}
+    function generatePDF() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const filterMonth = document.getElementById("monthFilter").value;
+        const monthData = data.filter(r => r.date.substring(0, 7) === filterMonth);
+        if (monthData.length === 0) { alert("此月份無紀錄"); return; }
+        const template = document.getElementById("pdfTemplate");
+        template.style.display = "block"; 
+        document.getElementById("pdfDateRange").textContent = "報告月份：" + filterMonth;
+        const sysValues = monthData.filter(r => r.sys).map(r => Number(r.sys));
+        const avgSys = sysValues.length > 0 ? Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length) : 0;
+        const maxSys = sysValues.length > 0 ? Math.max(...sysValues) : 0;
+        document.getElementById("pdfStats").innerHTML = `
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">平均收縮壓<br><b style="font-size:24px; color:#2b6cb0;">${avgSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:24px; color:#c53030;">${maxSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
+        `;
+        // 修改處：優化 PDF 表格寬度分配，強制固定佈局並處理備註換行與跨頁
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 12px;">
+            <thead>
+                <tr style="background:#edf2f7;">
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 13%;">時間</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 7%;">收縮壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 7%;">舒張壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 73%;">備註</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        monthData.forEach(r => {
+            tableHtml += `<tr>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.dia}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:left; word-wrap: break-word; white-space: normal;">${r.note || ""}</td>
+            </tr>`;
+        });
+        tableHtml += `</tbody></table>`;
+        document.getElementById("pdfTableArea").innerHTML = tableHtml;
+        
+        // 修改處：新增 pagebreak 設定避免跨頁切斷，並確保 layout 渲染完整
+        const opt = { 
+            margin: 10, 
+            filename: `血壓報告_${filterMonth}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2, useCORS: true }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+        html2pdf().from(template).set(opt).save().then(() => { template.style.display = "none"; });
+    }
 
     function toggleChart(show) {
         const layer = document.getElementById("chartLayer");
@@ -600,7 +570,7 @@ function generatePDF() {
             options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '最近30筆趨勢分析', font: { size: 16 } } } }
         });
 
-        // 2. 真實週趨勢圖
+        // 2. 真實週趨勢圖（新增計算邏輯）
         const weekSums = [0,0,0,0,0,0,0], weekCounts = [0,0,0,0,0,0,0];
         validData.forEach(r => {
             const day = new Date(r.date).getDay();
@@ -620,7 +590,7 @@ function generatePDF() {
             options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '生活作息週分析（真實數據）', font: { size: 16 } } } }
         });
 
-        // 3. 真實分佈圖
+        // 3. 真實分佈圖（新增計算邏輯）
         let dist = [0,0,0,0]; // 正常, 偏高, 一級, 二級
         validData.forEach(r => {
             const cat = getWHOCategory(r.sys, r.dia);

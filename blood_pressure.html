@@ -519,16 +519,16 @@
         `;
 
         // 核心修改：PDF 表格 CSS 加入強制換行與欄位比例優化
-        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 11px;">
-            <thead>
-                <tr style="background:#edf2f7;">
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 150px;">時間</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 60px;">收縮壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 60px;">舒張壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px;">備註</th>
-                </tr>
-            </thead>
-            <tbody>`;
+let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 11px;">
+    <thead>
+        <tr style="background:#edf2f7;">
+            <th style="border:1px solid #cbd5e0; padding:10px; width: 40mm;">時間</th>
+            <th style="border:1px solid #cbd5e0; padding:10px; width: 18mm;">收縮壓</th>
+            <th style="border:1px solid #cbd5e0; padding:10px; width: 18mm;">舒張壓</th>
+            <th style="border:1px solid #cbd5e0; padding:10px; width: 90mm; max-width: 90mm;">備註</th>
+        </tr>
+    </thead>
+    <tbody>`;
         
         monthData.forEach(r => {
             // 備註欄位加入 word-break: break-all 確保不溢出
@@ -536,7 +536,7 @@
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.dia}</td>
-                <td style="border:1px solid #cbd5e0; padding:8px; text-align:left; word-break: break-all; white-space: normal; line-height: 1.4;">${r.note || ""}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:left; width:90mm; max-width:90mm; word-break: break-all; white-space: normal; line-height: 1.4;">${r.note || ""}</td>
             </tr>`;
         });
         tableHtml += `</tbody></table>`;

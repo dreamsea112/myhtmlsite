@@ -197,10 +197,12 @@
 
         #pdfTemplate {
             display: none;
-            padding: 40px;
+            padding: 30px;
             color: #333;
             background: white;
-            width: 730px; /* 固定範本容器寬度，確保 html2pdf 擷取範圍精確 */
+            /* 鎖死寬度，防止 html2pdf 自動展開 */
+            width: 720px; 
+            margin: 0 auto;
         }
     </style>
 </head>
@@ -519,21 +521,20 @@
             <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
         `;
 
-        // 核心修改：移除外層 overflow 影響，並將備註寬度微調至 450px 以預留邊框空間 (總計約 690px)
-        // 增加 table-layout: fixed 強製表格遵守寬度不溢出
-        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #cbd5e0; table-layout: fixed; font-size: 11px;">
+        // 徹底修正：鎖定總寬度為 690px，並使用 table-layout: fixed 強制換行，確保右側不溢出
+        let tableHtml = `<table style="width: 690px; border-collapse:collapse; margin-top:20px; border:1px solid #cbd5e0; table-layout: fixed; font-size: 11px;">
             <thead>
                 <tr style="background:#edf2f7;">
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 110px;">時間</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 65px;">收縮壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 65px;">舒張壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 450px;">備註</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 150px;">時間</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 70px;">收縮壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 70px;">舒張壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 400px;">備註</th>
                 </tr>
             </thead>
             <tbody>`;
         
         monthData.forEach(r => {
-            // 備註欄位加入 word-break: break-all 確保不溢出且自動換行
+            // 備註欄位加入 word-break: break-all 並限制 white-space: normal 確保在 400px 內換行
             tableHtml += `<tr>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
@@ -544,14 +545,14 @@
         tableHtml += `</tbody></table>`;
         document.getElementById("pdfTableArea").innerHTML = tableHtml;
         
-        // 優化 opt 設定，避免自動插入分頁符導致第一頁空白
+        // 增加 html2canvas 捕捉寬度(width)的定義，避免內容被切掉
         const opt = { 
             margin: 10, 
             filename: `血壓報告_${filterMonth}.pdf`, 
             image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2, useCORS: true, logging: false, width: 750 }, 
+            html2canvas: { scale: 2, useCORS: true, logging: false, width: 720 }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: 'css', avoid: 'tr' } // 避免表格列跨頁斷裂
+            pagebreak: { mode: 'css', avoid: 'tr' } 
         };
 
         html2pdf().from(template).set(opt).save().then(() => { 

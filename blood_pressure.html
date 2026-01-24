@@ -265,6 +265,7 @@
     <button class="add-btn" style="background-color:#ed8936;" onclick="downloadExcel()">下載Excel</button>
     <button class="add-btn" style="background-color:#48bb78;" onclick="toggleChart(true)">顯示數據分析</button>
     <button class="add-btn" style="background-color:#38b2ac;" onclick="toggleCalendar(true)">月曆檢視</button>
+    <button class="add-btn" style="background-color:#e53e3e; color:white;" onclick="logout()">登出系統</button>
     <div style="margin-top:15px; color:#4a5568;">
         <span>剩餘藥量：</span>
         <input type="number" id="drugStock" style="width:80px; display:inline-block;" onchange="updateStock(this.value)"> 天
@@ -317,23 +318,36 @@
     const dbRef = database.ref("bloodPressureRecords");
 
     function verifyPassword() {
-        const pwd = document.getElementById("authPwd").value;
-        const msg = document.getElementById("authMsg");
-        msg.textContent = "驗證中...";
+    // 1. 抓取 UI 上輸入框的值 (使用者輸入什麼，這變數就是什麼)
+    const pwd = document.getElementById("authPwd").value;
+    const authMsg = document.getElementById("authMsg");
 
-        database.ref("__auth_guard").set({ pwd: pwd })
-        .then(() => database.ref("__auth_guard/verified").set(true))
-        .then(() => {
-            localStorage.setItem("bp_auth_ok", "1");
-            document.getElementById("authLayer").style.display = "none";
-            initMonthFilter(); 
-            loadRecords();
-            loadStock();
-        })
-        .catch(() => {
-            msg.textContent = "驗證失敗，請檢查密碼是否正確";
-        });
-    }
+    authMsg.textContent = "驗證中...";
+
+    // 2. 呼叫 Firebase 嘗試寫入權限開關
+    // 這裡送出的 pwd 會被 Firebase Rules 的 newData.child('pwd').val() 拿去比對
+    database.ref("__auth_guard").set({ 
+        pwd: pwd,        // 傳送變數，HTML 原始碼裡沒有真實密碼字串
+        verified: true 
+    })
+    .then(() => {
+        // 如果密碼正確，Firebase Rules 允許寫入，則執行以下成功邏輯
+        localStorage.setItem("bp_auth_ok", "1");
+        // 將密碼暫存於 Session，以便登出時可發送指令關閉權限
+        localStorage.setItem("temp_pwd_session", pwd); 
+        document.getElementById("authLayer").style.display = "none";
+        initMonthFilter(); 
+        loadRecords();
+        loadStock();
+    })
+    .catch((error) => {
+        // 如果密碼錯誤，Firebase Rules 會回傳 Permission Denied，執行失敗邏輯
+        console.error("驗證失敗:", error);
+        authMsg.textContent = "密碼錯誤，請重新輸入";
+        // 清空輸入框方便重新輸入
+        document.getElementById("authPwd").value = "";
+    });
+}
 
     if (localStorage.getItem("bp_auth_ok") === "1") {
         document.getElementById("authLayer").style.display = "none";
@@ -780,6 +794,30 @@
         save(data);
         render(data);
     }
+
+function logout() {
+    if (!confirm("確定要登出並關閉存取權限嗎？")) return;
+
+    // 從 localStorage 暫存中取得原本登入時用的密碼
+    const currentPwd = localStorage.getItem("temp_pwd_session"); 
+
+    database.ref("__auth_guard").set({
+        pwd: currentPwd || "", // 發送原本的密碼來獲得權限，並將 verified 變更為 false
+        verified: false
+    }).then(() => {
+        // 清除本地所有登入標記與暫存密碼
+        localStorage.removeItem("bp_auth_ok");
+        localStorage.removeItem("temp_pwd_session"); 
+        alert("已安全登出");
+        location.reload(); // 重新整理網頁回到驗證畫面
+    }).catch((error) => {
+        // 若權限不足或網路問題，仍清除本地標記並強制重整
+        console.error("登出程序異常:", error);
+        localStorage.removeItem("bp_auth_ok");
+        localStorage.removeItem("temp_pwd_session");
+        location.reload();
+    });
+}
 
     function downloadCSV() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];

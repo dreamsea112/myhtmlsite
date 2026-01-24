@@ -497,7 +497,7 @@
         });
     }
 
-function generatePDF() {
+    function generatePDF() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         const filterMonth = document.getElementById("monthFilter").value;
         const monthData = data.filter(r => r.date.substring(0, 7) === filterMonth);
@@ -506,41 +506,34 @@ function generatePDF() {
         
         // 確保範本顯示以進行捕捉
         template.style.display = "block"; 
-        // 強制鎖定範本物理寬度，防止渲染引擎溢出 A4 邊界 (約 190mm)
-        template.style.width = "190mm";
-        template.style.margin = "0 auto";
-        
         document.getElementById("pdfDateRange").textContent = "報告月份：" + filterMonth;
         
         const sysValues = monthData.filter(r => r.sys).map(r => Number(r.sys));
         const avgSys = sysValues.length > 0 ? Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length) : 0;
         const maxSys = sysValues.length > 0 ? Math.max(...sysValues) : 0;
         
-        // 修正統計區塊，避免在 PDF 中因 Grid 佈局縮放產生位移
         document.getElementById("pdfStats").innerHTML = `
-            <div style="flex:1; padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px; margin-right:10px;">平均收縮壓<br><b style="font-size:24px; color:#2b6cb0;">${avgSys}</b></div>
-            <div style="flex:1; padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px; margin-right:10px;">最高收縮壓<br><b style="font-size:24px; color:#c53030;">${maxSys}</b></div>
-            <div style="flex:1; padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">平均收縮壓<br><b style="font-size:24px; color:#2b6cb0;">${avgSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:24px; color:#c53030;">${maxSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
         `;
-        document.getElementById("pdfStats").style.display = "flex";
 
-        // 核心修改：使用 table-layout: fixed 並精確分配像素寬度
-        // 總寬度約 700px (對應 190mm 內縮後)，確保最右邊備註欄不超出 A4
+        // 核心修改：PDF 表格 CSS 加入強制換行與欄位比例優化
         let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 11px;">
             <thead>
                 <tr style="background:#edf2f7;">
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: 140px;">時間</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 150px;">時間</th>
                     <th style="border:1px solid #cbd5e0; padding:10px; width: 60px;">收縮壓</th>
                     <th style="border:1px solid #cbd5e0; padding:10px; width: 60px;">舒張壓</th>
-                    <th style="border:1px solid #cbd5e0; padding:10px; width: auto;">備註</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px;">備註</th>
                 </tr>
             </thead>
             <tbody>`;
         
         monthData.forEach(r => {
-            // 備註欄位加入 word-break 與 page-break 控制，解決溢出與暴力切斷問題
-            tableHtml += `<tr style="page-break-inside: avoid !important;">
-                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date}<br>${r.time}</td>
+            // 備註欄位加入 word-break: break-all 確保不溢出
+            tableHtml += `<tr>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.dia}</td>
                 <td style="border:1px solid #cbd5e0; padding:8px; text-align:left; word-break: break-all; white-space: normal; line-height: 1.4;">${r.note || ""}</td>
@@ -549,19 +542,14 @@ function generatePDF() {
         tableHtml += `</tbody></table>`;
         document.getElementById("pdfTableArea").innerHTML = tableHtml;
         
-        // 優化 opt 設定：使用 windowWidth 固定渲染寬度，並強化換頁避讓邏輯
+        // 核心修改：優化 opt 設定，避免自動插入分頁符導致第一頁空白
         const opt = { 
-            margin: [10, 5, 10, 5], // 上, 左, 下, 右 的邊距 (mm)
+            margin: 10, 
             filename: `血壓報告_${filterMonth}.pdf`, 
             image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { 
-                scale: 2, 
-                useCORS: true, 
-                logging: false,
-                windowWidth: 800 // 鎖定虛擬瀏覽器寬度，防止備註欄橫向無限延伸
-            }, 
+            html2canvas: { scale: 2, useCORS: true, logging: false }, 
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // 多重防切斷模式
+            pagebreak: { mode: 'css', avoid: 'tr' } // 避免表格列跨頁斷裂，且僅依據內容自動換頁
         };
 
         html2pdf().from(template).set(opt).save().then(() => { 

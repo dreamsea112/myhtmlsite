@@ -8,6 +8,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 
     <style>
         /* 整體風格美化：改為淺色質感底色，深色文字 */
@@ -261,9 +262,9 @@
 <div class="filter-section" style="text-align:center; margin-bottom:20px;">
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
     <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
+    <button class="add-btn" style="background-color:#ed8936;" onclick="downloadExcel()">下載Excel</button>
     <button class="add-btn" style="background-color:#48bb78;" onclick="toggleChart(true)">顯示數據分析</button>
     <button class="add-btn" style="background-color:#38b2ac;" onclick="toggleCalendar(true)">月曆檢視</button>
-    <button class="add-btn" style="background-color:#ed8936;" onclick="generatePDF()">下載回診報告</button>
     <div style="margin-top:15px; color:#4a5568;">
         <span>剩餘藥量：</span>
         <input type="number" id="drugStock" style="width:80px; display:inline-block;" onchange="updateStock(this.value)"> 天
@@ -491,10 +492,100 @@
                 <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
                 <td><input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)"></td>
                 <td><input type="checkbox" style="width:20px; height:20px;" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)"></td>
-                <td><button onclick="remove(${index})" style="background:#fed7d7; color:#c53030;">刪除</button></td>
+                <td><button onclick="remove(${index})" style="background:#fed7d7; color:#c53030; white-space:nowrap;">刪除</button></td>
             `;
             tbody.appendChild(tr);
         });
+    }
+
+    /* 需求 1-2: 新增下載Excel功能，包含趨勢圖 */
+    async function downloadExcel() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        if (!data.length) { alert("無數據可匯出"); return; }
+
+        // 建立活頁簿與工作表
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('血壓紀錄');
+
+        // 設定欄位標題與寬度
+        worksheet.columns = [
+            { header: '時間', key: 'date', width: 15 },
+            { header: '時段', key: 'time', width: 12 },
+            { header: '收縮壓', key: 'sys', width: 12 },
+            { header: '舒張壓', key: 'dia', width: 12 }
+        ];
+
+        // 加入數據內容
+        data.forEach(r => {
+            worksheet.addRow({
+                date: r.date,
+                time: r.time,
+                sys: Number(r.sys) || 0,
+                dia: Number(r.dia) || 0
+            });
+        });
+
+        // 取得最近 30 筆數據並生成趨勢圖圖片
+        const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+        const last30 = validData.slice(-30);
+
+        if (last30.length > 0) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 800; // 寬度加大讓圖表更清晰
+            canvas.height = 400;
+            const ctx = canvas.getContext('2d');
+            
+            // 繪製離線圖表
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: last30.map(r => r.date.substring(5) + " " + r.time),
+                    datasets: [
+                        { label: '收縮壓', data: last30.map(r => r.sys), borderColor: '#e53e3e', backgroundColor: '#e53e3e', tension: 0.3, fill: false },
+                        { label: '舒張壓', data: last30.map(r => r.dia), borderColor: '#3182ce', backgroundColor: '#3182ce', tension: 0.3, fill: false }
+                    ]
+                },
+                options: { 
+                    responsive: false, 
+                    animation: false,
+                    devicePixelRatio: 1,
+                    plugins: { 
+                        title: { display: true, text: '最近30筆趨勢圖', font: { size: 18 } },
+                        legend: { labels: { font: { size: 14 } } }
+                    },
+                    scales: {
+                        y: { beginAtZero: false, title: { display: true, text: 'mmHg' } }
+                    }
+                }
+            });
+
+            // 緩衝等待 Chart 繪製完成
+            await new Promise(resolve => setTimeout(resolve, 800));
+            const base64Image = canvas.toDataURL('image/png');
+
+            // 將圖片加到活頁簿
+            const imageId = workbook.addImage({
+                base64: base64Image,
+                extension: 'png',
+            });
+
+            // 將圖表置於數據下方 (跳過兩列)
+            const chartRow = data.length + 3;
+            worksheet.addImage(imageId, {
+                tl: { col: 0, row: chartRow },
+                ext: { width: 600, height: 300 }
+            });
+        }
+
+        // 匯出檔案
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `血壓紀錄_${new Date().toLocaleDateString()}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
     }
 
     function generatePDF() {
@@ -581,7 +672,7 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '最近30筆趨勢分析', font: { size: 16 } } } }
         });
 
-        // 2. 真實週趨勢圖（新增計算邏輯）
+        // 2. 真實週趨勢圖
         const weekSums = [0,0,0,0,0,0,0], weekCounts = [0,0,0,0,0,0,0];
         validData.forEach(r => {
             const day = new Date(r.date).getDay();
@@ -601,7 +692,7 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '生活作息週分析（真實數據）', font: { size: 16 } } } }
         });
 
-        // 3. 真實分佈圖（新增計算邏輯）
+        // 3. 真實分佈圖
         let dist = [0,0,0,0]; // 正常, 偏高, 一級, 二級
         validData.forEach(r => {
             const cat = getWHOCategory(r.sys, r.dia);
@@ -708,4 +799,3 @@
 
 </body>
 </html>
-

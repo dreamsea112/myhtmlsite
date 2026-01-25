@@ -807,7 +807,7 @@
             if (dayRecords.some(r => (Number(r.sys) >= 140 || Number(r.dia) >= 90))) cell.classList.add("bp-high");
             if (dayRecords.length > 0) {
                 let tooltip = "";
-                dayRecords.forEach(r => tooltip += `${r.time} 壓：${r.sys}/${r.dia}\n`);
+                dayRecords.forEach(r => tooltip += `${r.time} 血壓：${r.sys}/${r.dia}\n`);
                 cell.title = tooltip.trim();
             }
             cell.innerHTML = `<span style="font-weight:600;">${d}</span>`;

@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>血壓/用藥紀錄表</title>
+    <title>血壓健康雲端管理系統</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -202,6 +202,30 @@
             color: #333;
             background: white;
         }
+
+        /* 質感底部資訊欄設定 */
+        .system-footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+        }
+        .system-version {
+            font-size: 13px;
+            letter-spacing: 2px;
+            color: #a0aec0;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .system-title-pro {
+            display: block;
+            font-size: 16px;
+            color: #4a5568;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body>
@@ -257,11 +281,13 @@
 <div id="medReminder" style="display:none;">提示：今日尚未勾選任何已服藥紀錄</div>
 <div id="avgInfo" style="display:none;"></div>
 
-<h1>血壓/用藥紀錄表</h1>
+<h1>血壓健康雲端管理系統</h1>
 
 <div class="filter-section" style="text-align:center; margin-bottom:20px;">
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
     <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
+    <input type="file" id="csvUpload" accept=".csv" style="display:none;" onchange="importCSV(this)">
+    <button class="add-btn" style="background-color:#5a67d8;" onclick="document.getElementById('csvUpload').click()">還原CSV</button>
     <button class="add-btn" style="background-color:#ed8936;" onclick="downloadExcel()">下載Excel</button>
     <button class="add-btn" style="background-color:#48bb78;" onclick="toggleChart(true)">顯示數據分析</button>
     <button class="add-btn" style="background-color:#38b2ac;" onclick="toggleCalendar(true)">月曆檢視</button>
@@ -290,6 +316,12 @@
     </thead>
     <tbody id="records"></tbody>
 </table>
+</div>
+
+<div class="system-footer">
+    <span class="system-title-pro">智慧血壓雲端管理系統 (AI-Health Cloud Support)</span>
+    <span class="system-version">SYSTEM VERSION 1.2 PRO-ENTERPRISE</span>
+    <div style="font-size: 11px; color: #cbd5e0; margin-top: 8px;">加密連線安全存取中 (SSL Encrypted Connection)</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -495,7 +527,7 @@
         }
 
         data.forEach((record, index) => {
-            if (record.date.substring(0, 7) !== filterMonth) return;
+            if (!record.date || record.date.substring(0,7) !== filterMonth) return;
             const tr = document.createElement("tr");
             const whoClass = getWHOCategory(record.sys, record.dia);
             tr.innerHTML = `
@@ -832,6 +864,59 @@ function logout() {
         a.download = `血壓紀錄_${new Date().toLocaleDateString()}.csv`;
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    /* 新增功能：導入並還原 CSV 資料 */
+    function importCSV(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        // 確認是否進行還原動作，此動作會覆蓋現有資料
+        if (!confirm("警告：還原 CSV 將會覆蓋目前的資料庫紀錄，確定要繼續嗎？")) {
+            input.value = ""; // 清空選取
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            const lines = content.split("\n");
+            const newData = [];
+
+            // 從第二行開始讀取 (跳過標題列)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // 解析 CSV 欄位 (日期,時間,收縮壓,舒張壓,心跳,備註,已服藥)
+                const parts = line.split(",");
+                if (parts.length < 7) continue;
+
+                newData.push({
+                    date: parts[0] || "",
+                    time: parts[1] || "",
+                    sys: parts[2] || "",
+                    dia: parts[3] || "",
+                    hr: parts[4] || "",
+                    note: parts[5] || "",
+                    tookMed: parts[6] === "是" ? true : false
+                });
+            }
+
+            if (newData.length > 0) {
+                // 將解析後的數據儲存至 localStorage 與 Firebase
+                save(newData);
+                // 重新載入月份清單與畫面渲染
+                updateMonthList(newData);
+                render(newData);
+                alert("資料還原成功，共匯入 " + newData.length + " 筆紀錄。");
+            } else {
+                alert("還原失敗：檔案格式不符或無有效數據。");
+            }
+            input.value = ""; // 處理完畢後清空
+        };
+        // 使用 UTF-8 讀取檔案
+        reader.readAsText(file, "UTF-8");
     }
 </script>
 

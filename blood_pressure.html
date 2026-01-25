@@ -885,24 +885,41 @@ function logout() {
 
             // 從第二行開始讀取 (跳過標題列)
             for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+    // 1. 去掉整行頭尾的空白與換行符號 (\r, \n)
+    const line = lines[i].trim(); 
+    if (!line) continue;
 
-                // 解析 CSV 欄位 (日期,時間,收縮壓,舒張壓,心跳,備註,已服藥)
-                const parts = line.split(",");
-                if (parts.length < 7) continue;
+    // 2. 切割欄位
+    const parts = line.split(",");
+    
+    // 安全檢查：如果欄位少於 7 個，說明這行資料不完整，跳過它
+    if (parts.length < 7) continue;
 
-                newData.push({
-                    date: parts[0] || "",
-                    time: parts[1] || "",
-                    sys: parts[2] || "",
-                    dia: parts[3] || "",
-                    hr: parts[4] || "",
-                    note: parts[5] || "",
-                    tookMed: parts[6] === "是" ? true : false
-                });
-            }
+    // 3. 提取最後一欄（已服藥），pop() 會移除並回傳最後一個元素
+    const tookMedStr = parts.pop() || ""; 
+    const tookMed = tookMedStr.trim() === "是";
 
+    // 4. 定義前 5 個固定欄位
+    const date = parts[0] || "";
+    const time = parts[1] || "";
+    const sys  = parts[2] || "";
+    const dia  = parts[3] || "";
+    const hr   = parts[4] || "";
+
+    // 5. 處理備註：將剩餘的所有部分（從索引 5 開始）重新用逗號黏起來
+    // 這樣就算備註裡有英文逗號，也能完整還原
+    const note = parts.slice(5).join(","); 
+
+    newData.push({
+        date: date,
+        time: time,
+        sys: sys,
+        dia: dia,
+        hr: hr,
+        note: note,
+        tookMed: tookMed
+    });
+}
             if (newData.length > 0) {
                 // 將解析後的數據儲存至 localStorage 與 Firebase
                 save(newData);

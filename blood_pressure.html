@@ -235,7 +235,7 @@
     <div id="authBox">
         <h3 style="margin-top:0;">系統安全驗證</h3>
         <p style="color:#718096; font-size:14px;">請輸入存取密碼以同步健康紀錄</p>
-        <input type="password" id="authPwd" placeholder="請輸入密碼" style="margin-bottom:15px;">
+        <input type="password" id="authPwd" placeholder="請輸入密碼" style="margin-bottom:15px;" onkeydown="if(event.keyCode==13) verifyPassword()">
         <button onclick="verifyPassword()" style="width:100%; background:#3182ce; color:white;">驗證並登入</button>
         <div id="authMsg" style="margin-top:10px; color:#e53e3e; font-size:14px;"></div>
     </div>

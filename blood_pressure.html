@@ -286,6 +286,7 @@
 
 <div class="filter-section" style="text-align:center; margin-bottom:20px;">
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
+    <button class="add-btn" style="background-color:#9f7aea;" onclick="quickMedRecord()">僅紀錄服藥</button>
     <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
     <input type="file" id="csvUpload" accept=".csv" style="display:none;" onchange="importCSV(this)">
     <button class="add-btn" style="background-color:#5a67d8;" onclick="document.getElementById('csvUpload').click()">還原CSV</button>
@@ -829,13 +830,52 @@
         render(data);
     }
 
-    function remove(index) {
-        if (!confirm("確定要刪除這筆紀錄嗎？")) return;
+    /* 新增功能：快速紀錄服藥，不需填寫血壓數據 */
+    function quickMedRecord() {
+        const now = new Date();
+        const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        data.splice(index, 1);
+
+        // 處理藥物庫存扣除邏輯
+        let currentStock = Number(document.getElementById("drugStock").value) || 0;
+        currentStock = Math.max(0, currentStock - 1);
+        updateStock(currentStock);
+        document.getElementById("drugStock").value = currentStock;
+
+        // 新增紀錄：血壓心跳留空，備註自動填入，勾選已服藥
+        data.push({ 
+            date: date, 
+            time: time, 
+            sys: "", 
+            dia: "", 
+            hr: "", 
+            note: "[僅服藥] 未量血壓", 
+            tookMed: true 
+        });
+
         save(data);
+        updateMonthList(data);
+        document.getElementById("monthFilter").value = date.substring(0, 7);
         render(data);
     }
+
+    function remove(index) {
+    if (!confirm("確定要刪除這筆紀錄嗎？")) return;
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    /* 新增補償邏輯：若刪除的是已服藥紀錄，需將藥量加回 */
+    if (data[index] && data[index].tookMed === true) {
+        let currentStock = Number(document.getElementById("drugStock").value) || 0;
+        currentStock += 1;
+        updateStock(currentStock);
+        document.getElementById("drugStock").value = currentStock;
+    }
+
+    data.splice(index, 1);
+    save(data);
+    render(data);
+}
 
 // 登入後啟動 10 分鐘強制自動登出機制 (各裝置獨立計算)
 function startAutoLogoutTimer() {

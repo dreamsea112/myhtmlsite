@@ -878,48 +878,58 @@
     render(data);
 }
 
-/* 新增小工具：計算兩次血壓平均值並自動填入 */
+/* 新增小工具：計算兩次血壓平均值並自動填入（優化輸入順序版） */
     function openAvgCalculator() {
-        const sys1 = prompt("請輸入第一次收縮壓 (高壓)：");
+        // 第一次測量數據輸入
+        const sys1 = prompt("第1次測量：請輸入 收縮壓 (高壓)");
         if (sys1 === null) return;
-        const sys2 = prompt("請輸入第二次收縮壓 (高壓)：");
-        if (sys2 === null) return;
-        
-        const dia1 = prompt("請輸入第一次舒張壓 (低壓)：");
+        const dia1 = prompt("第1次測量：請輸入 舒張壓 (低壓)");
         if (dia1 === null) return;
-        const dia2 = prompt("請輸入第二次舒張壓 (低壓)：");
+        const hr1 = prompt("第1次測量：請輸入 心跳");
+        if (hr1 === null) return;
+
+        // 第二次測量數據輸入
+        const sys2 = prompt("第2次測量：請輸入 收縮壓 (高壓)");
+        if (sys2 === null) return;
+        const dia2 = prompt("第2次測量：請輸入 舒張壓 (低壓)");
         if (dia2 === null) return;
+        const hr2 = prompt("第2次測量：請輸入 心跳");
+        if (hr2 === null) return;
 
         // 計算四捨五入後的平均值
         const avgSys = Math.round((Number(sys1) + Number(sys2)) / 2);
         const avgDia = Math.round((Number(dia1) + Number(dia2)) / 2);
+        const avgHr = Math.round((Number(hr1) + Number(hr2)) / 2);
 
-        if (isNaN(avgSys) || isNaN(avgDia)) {
-            alert("輸入格式錯誤，請輸入數字");
+        // 驗證輸入是否為有效數字
+        if (isNaN(avgSys) || isNaN(avgDia) || isNaN(avgHr)) {
+            alert("輸入格式錯誤，請務必輸入數字");
             return;
         }
 
-        // 執行新增紀錄邏輯
+        // 取得當前時間並封裝數據
         const now = new Date();
         const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 
+        // 將平均值紀錄推送到資料陣列
         data.push({ 
             date: date, 
             time: time, 
             sys: avgSys.toString(), 
             dia: avgDia.toString(), 
-            hr: "", 
+            hr: avgHr.toString(), 
             note: "722平均值紀錄", 
             tookMed: false 
         });
 
+        // 儲存並更新介面
         save(data);
         updateMonthList(data);
         document.getElementById("monthFilter").value = date.substring(0, 7);
         render(data);
-        alert("已自動計算並新增紀錄：\n平均收縮壓：" + avgSys + "\n平均舒張壓：" + avgDia);
+        alert("已完成722平均值計算並自動新增：\n平均收縮壓：" + avgSys + "\n平均舒張壓：" + avgDia + "\n平均心跳：" + avgHr);
     }
 
 // 登入後啟動 10 分鐘強制自動登出機制 (各裝置獨立計算)

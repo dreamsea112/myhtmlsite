@@ -286,6 +286,7 @@
 
 <div class="filter-section" style="text-align:center; margin-bottom:20px;">
     <button class="add-btn" onclick="addRecord()">新增紀錄</button>
+    <button class="add-btn" style="background-color:#38a169;" onclick="openAvgCalculator()">計算平均值</button>
     <button class="add-btn" style="background-color:#9f7aea;" onclick="quickMedRecord()">僅紀錄服藥</button>
     <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
     <input type="file" id="csvUpload" accept=".csv" style="display:none;" onchange="importCSV(this)">
@@ -876,6 +877,50 @@
     save(data);
     render(data);
 }
+
+/* 新增小工具：計算兩次血壓平均值並自動填入 */
+    function openAvgCalculator() {
+        const sys1 = prompt("請輸入第一次收縮壓 (高壓)：");
+        if (sys1 === null) return;
+        const sys2 = prompt("請輸入第二次收縮壓 (高壓)：");
+        if (sys2 === null) return;
+        
+        const dia1 = prompt("請輸入第一次舒張壓 (低壓)：");
+        if (dia1 === null) return;
+        const dia2 = prompt("請輸入第二次舒張壓 (低壓)：");
+        if (dia2 === null) return;
+
+        // 計算四捨五入後的平均值
+        const avgSys = Math.round((Number(sys1) + Number(sys2)) / 2);
+        const avgDia = Math.round((Number(dia1) + Number(dia2)) / 2);
+
+        if (isNaN(avgSys) || isNaN(avgDia)) {
+            alert("輸入格式錯誤，請輸入數字");
+            return;
+        }
+
+        // 執行新增紀錄邏輯
+        const now = new Date();
+        const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        data.push({ 
+            date: date, 
+            time: time, 
+            sys: avgSys.toString(), 
+            dia: avgDia.toString(), 
+            hr: "", 
+            note: "722平均值紀錄", 
+            tookMed: false 
+        });
+
+        save(data);
+        updateMonthList(data);
+        document.getElementById("monthFilter").value = date.substring(0, 7);
+        render(data);
+        alert("已自動計算並新增紀錄：\n平均收縮壓：" + avgSys + "\n平均舒張壓：" + avgDia);
+    }
 
 // 登入後啟動 10 分鐘強制自動登出機制 (各裝置獨立計算)
 function startAutoLogoutTimer() {

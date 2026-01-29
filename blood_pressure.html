@@ -227,41 +227,6 @@
             margin-bottom: 5px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-
-/* 行動裝置按鈕區優化：桌機不影響，手機折疊次要功能 */
-@media (max-width: 768px) {
-
-    .action-bar {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .action-main {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-    }
-
-    .action-extra {
-        display: none;
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px solid #e2e8f0;
-    }
-
-    .action-extra.show {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-
-    .toggle-more-btn {
-        background-color: #4a5568;
-        color: white;
-    }
-}
-
     </style>
 </head>
 <body>
@@ -320,41 +285,22 @@
 <h1>血壓健康雲端管理系統</h1>
 
 <div class="filter-section" style="text-align:center; margin-bottom:20px;">
-
-    <div class="action-bar">
-
-        <!-- 主要操作：手機與桌機都顯示 -->
-        <div class="action-main">
-            <button class="add-btn" onclick="addRecord()">新增紀錄</button>
-            <button class="add-btn" style="background-color:#38a169;" onclick="openAvgCalculator()">計算平均值</button>
-            <button class="add-btn" style="background-color:#9f7aea;" onclick="quickMedRecord()">僅紀錄服藥</button>
-        </div>
-
-        <!-- 更多功能切換鍵：僅手機時視覺上重要 -->
-        <button class="add-btn toggle-more-btn" onclick="this.nextElementSibling.classList.toggle('show')">
-            更多功能
-        </button>
-
-        <!-- 次要功能群組：手機預設隱藏，桌機自然展開 -->
-        <div class="action-extra show">
-            <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
-            <input type="file" id="csvUpload" accept=".csv" style="display:none;" onchange="importCSV(this)">
-            <button class="add-btn" style="background-color:#5a67d8;" onclick="document.getElementById('csvUpload').click()">還原CSV</button>
-            <button class="add-btn" style="background-color:#ed8936;" onclick="downloadExcel()">下載Excel</button>
-            <button class="add-btn" style="background-color:#48bb78;" onclick="toggleChart(true)">顯示數據分析</button>
-            <button class="add-btn" style="background-color:#38b2ac;" onclick="toggleCalendar(true)">月曆檢視</button>
-            <button class="add-btn" style="background-color:#e53e3e; color:white;" onclick="logout()">登出系統</button>
-        </div>
-
-    </div>
-
+    <button class="add-btn" onclick="addRecord()">新增紀錄</button>
+    <button class="add-btn" style="background-color:#38a169;" onclick="openAvgCalculator()">計算平均值</button>
+    <button class="add-btn" style="background-color:#9f7aea;" onclick="quickMedRecord()">僅紀錄服藥</button>
+    <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
+    <input type="file" id="csvUpload" accept=".csv" style="display:none;" onchange="importCSV(this)">
+    <button class="add-btn" style="background-color:#5a67d8;" onclick="document.getElementById('csvUpload').click()">還原CSV</button>
+    <button class="add-btn" style="background-color:#ed8936;" onclick="downloadExcel()">下載Excel</button>
+    <button class="add-btn" style="background-color:#48bb78;" onclick="toggleChart(true)">顯示數據分析</button>
+    <button class="add-btn" style="background-color:#38b2ac;" onclick="toggleCalendar(true)">月曆檢視</button>
+    <button class="add-btn" style="background-color:#e53e3e; color:white;" onclick="logout()">登出系統</button>
     <div style="margin-top:15px; color:#4a5568;">
         <span>剩餘藥量：</span>
         <input type="number" id="drugStock" style="width:80px; display:inline-block;" onchange="updateStock(this.value)"> 天
         <span style="margin-left:20px;">月份篩選：</span>
         <select id="monthFilter" style="width:140px; display:inline-block;" onchange="loadRecords()"></select>
     </div>
-
 </div>
 
 <div class="table-wrapper">

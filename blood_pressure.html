@@ -329,8 +329,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
@@ -344,41 +342,51 @@
 
 
     const firebaseConfig = {
-      const firebaseConfig = {
-  apiKey: "AIzaSyA5LnHwmbk5-GMIc90bAPkqYiheX0pX6Ms",
-  authDomain: "my-health-record-1a9f2.firebaseapp.com",
-  databaseURL: "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "my-health-record-1a9f2",
-  storageBucket: "my-health-record-1a9f2.firebasestorage.app",
-  messagingSenderId: "884879920046",
-  appId: "1:884879920046:web:b3a7505188d0781907163f"
-};
+      apiKey: "AIzaSyCt699L3jpNHyOEcE6dwFdln5BS4eiDjvg",
+      authDomain: "my-health-record-1a9f2.firebaseapp.com",
+      databaseURL: "https://my-health-record-1a9f2-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "my-health-record-1a9f2",
+      storageBucket: "my-health-record-1a9f2.firebasestorage.app",
+      messagingSenderId: "884879920046",
+      appId: "1:884879920046:web:b3a7505188d0781907163f"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database(undefined, { experimentalForceLongPolling: true });
     const dbRef = database.ref("bloodPressureRecords");
 
-// Google 登入驗證（僅處理安全性，不影響血壓功能）
-function googleLogin() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider)
-        .then((result) => {
-            localStorage.setItem("bp_auth_ok", "1");
-            document.getElementById("authLayer").style.display = "none";
-            initMonthFilter();
-            loadRecords();
-            loadStock();
-            startAutoLogoutTimer();
-        })
-        .catch((error) => {
-            console.error("Google 登入失敗:", error);
-            document.getElementById("authMsg").textContent = "Google 登入失敗，請稍後再試";
-        });
-}
+    function verifyPassword() {
+    // 1. 抓取 UI 上輸入框的值 (使用者輸入什麼，這變數就是什麼)
+    const pwd = document.getElementById("authPwd").value;
+    const authMsg = document.getElementById("authMsg");
 
-    // 安全性已升級為 Google 登入，保留函式名稱避免影響其他呼叫點
-function verifyPassword() {
-    googleLogin();
+    authMsg.textContent = "驗證中...";
+
+    // 2. 呼叫 Firebase 嘗試寫入權限開關
+    // 這裡送出的 pwd 會被 Firebase Rules 的 newData.child('pwd').val() 拿去比對
+    database.ref("__auth_guard").set({ 
+        pwd: pwd,        // 傳送變數，HTML 原始碼裡沒有真實密碼字串
+        verified: true 
+    })
+    .then(() => {
+        // 如果密碼正確，Firebase Rules 允許寫入，則執行以下成功邏輯
+        localStorage.setItem("bp_auth_ok", "1");
+        // 將密碼暫存於 Session，以便登出時可發送指令關閉權限
+        localStorage.setItem("temp_pwd_session", pwd); 
+        document.getElementById("authLayer").style.display = "none";
+        initMonthFilter(); 
+        loadRecords();
+        loadStock();
+        // 啟動登入後 10 分鐘強制自動登出
+        startAutoLogoutTimer();
+    })
+    .catch((error) => {
+        // 如果密碼錯誤，Firebase Rules 會回傳 Permission Denied，執行失敗邏輯
+        console.error("驗證失敗:", error);
+        authMsg.textContent = "密碼錯誤，請重新輸入";
+        // 清空輸入框方便重新輸入
+        document.getElementById("authPwd").value = "";
+    });
 }
 
     window.addEventListener("load", () => {
@@ -965,8 +973,10 @@ function logout(isAuto = false) {
             alert("已安全登出");
         }
 
-function logout() {
-    firebase.auth().signOut().finally(() => {
+        location.reload(); // 重新整理網頁回到驗證畫面
+    }).catch((error) => {
+        // 若權限不足或網路問題，仍清除本地標記並強制重整
+        console.error("登出程序異常:", error);
         localStorage.removeItem("bp_auth_ok");
         localStorage.removeItem("temp_pwd_session");
         location.reload();
@@ -1061,7 +1071,4 @@ function logout() {
 
 </body>
 </html>
-
-
-
 

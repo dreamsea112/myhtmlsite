@@ -294,14 +294,15 @@
         width: 100%;
     }
 
-    .card-delete-btn {
-        width: 100%;
-        margin-top: 10px;
-        background: #fed7d7;
-        color: #c53030;
-        border-radius: 8px;
-        padding: 10px;
-    }
+.card-delete-btn {
+    width: 100%;
+    background: #fed7d7;
+    color: #c53030;
+    border-radius: 8px;
+    padding: 6px 0;
+    font-size: 14px;
+}
+
 }
 
     </style>
@@ -676,22 +677,25 @@ const firebaseConfig = {
                 </div>
             </div>
 
-            <div class="card-grid-2">
-                <div class="card-field">
-                    <label>備註</label>
-                    <input type="text" value="${record.note || ""}"
-                        onchange="updateSilent(${index}, 'note', this.value, this)">
-                </div>
+<div class="card-grid-3">
+    <div class="card-field">
+        <label>備註</label>
+        <input type="text" value="${record.note || ""}"
+            onchange="updateSilent(${index}, 'note', this.value, this)">
+    </div>
 
-                <div class="card-field">
-                    <label>是否服藥</label>
-                    <input type="checkbox" style="width:20px; height:20px;"
-                        ${record.tookMed ? "checked" : ""}
-                        onchange="updateSilent(${index}, 'tookMed', this.checked, this)">
-                </div>
-            </div>
+    <div class="card-field">
+        <label>是否服藥</label>
+        <input type="checkbox" style="width:20px; height:20px;"
+            ${record.tookMed ? "checked" : ""}
+            onchange="updateSilent(${index}, 'tookMed', this.checked, this)">
+    </div>
 
-            <button onclick="remove(${index})" class="card-delete-btn">刪除</button>
+    <div class="card-field">
+        <label>&nbsp;</label>
+        <button onclick="remove(${index})" class="card-delete-btn">刪除</button>
+    </div>
+</div>
 
         </td>
     `;

@@ -1,1 +1,22 @@
 
+{
+  "rules": {
+    "__auth_guard": {
+      ".read": false,
+      ".write": "now < 3060950400000 && newData.child('pwd').val() === 'As00000128'",
+      "verified": {
+        ".read": true
+      }
+    },
+    "bloodPressureRecords": {
+      ".read": "now < 3060950400000 && root.child('__auth_guard/verified').val() === true",
+      ".write": "now < 3060950400000 && root.child('__auth_guard/verified').val() === true"
+    },
+    "meta": {
+      "drugStock": {
+        ".read": "now < 3060950400000 && root.child('__auth_guard/verified').val() === true",
+        ".write": "now < 3060950400000 && root.child('__auth_guard/verified').val() === true"
+      }
+    }
+  }
+}

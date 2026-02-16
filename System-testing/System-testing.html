@@ -294,6 +294,13 @@
         width: 100%;
     }
 
+.field-center {
+    display: flex;
+    flex-direction: column; /* 讓 label 和 input 垂直排列 */
+    align-items: center;    /* 水平置中 */
+    justify-content: center; /* 垂直置中 (若高度足夠時有效) */
+}
+
 .card-delete-btn {
     width: 100%;
     background: #fed7d7;
@@ -684,7 +691,7 @@ const firebaseConfig = {
             onchange="updateSilent(${index}, 'note', this.value, this)">
     </div>
 
-    <div class="card-field">
+    <div class="card-field field-center">
         <label>是否服藥</label>
         <input type="checkbox" style="width:20px; height:20px;"
             ${record.tookMed ? "checked" : ""}

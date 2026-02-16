@@ -226,6 +226,73 @@
             margin-bottom: 5px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
+
+        /* ========================= */
+        /* 手機專用卡片式顯示樣式新增 */
+        /* 僅在 768px 以下啟動 */
+        /* ========================= */
+
+        @media (max-width: 768px) {
+
+            .table-wrapper {
+                box-shadow: none;
+                padding: 0;
+                background: transparent;
+            }
+
+            table thead {
+                display: none;
+            }
+
+            table {
+                min-width: 100%;
+            }
+
+            table tbody tr {
+                display: block;
+                background: white;
+                margin-bottom: 15px;
+                border-radius: 12px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                padding: 15px;
+            }
+
+            table tbody td {
+                display: block;
+                border: none;
+                text-align: left;
+                padding: 6px 0;
+            }
+
+            table tbody td:last-child {
+                margin-top: 10px;
+            }
+
+            .card-label {
+                font-size: 12px;
+                color: #718096;
+                margin-bottom: 2px;
+            }
+
+            .card-value {
+                font-size: 16px;
+                font-weight: 600;
+                color: #2d3748;
+            }
+
+            .card-row {
+                margin-bottom: 10px;
+            }
+
+            .card-delete-btn {
+                width: 100%;
+                background: #fed7d7;
+                color: #c53030;
+                border-radius: 8px;
+                padding: 10px;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -515,7 +582,7 @@ const firebaseConfig = {
         }
     }
 
-    function render(data) {
+        function render(data) {
         const tbody = document.getElementById("records");
         tbody.innerHTML = "";
         const nowLocal = new Date();
@@ -538,23 +605,65 @@ const firebaseConfig = {
             document.getElementById("avgInfo").style.display = "none";
         }
 
+        const isMobile = window.innerWidth <= 768;
+
         data.forEach((record, index) => {
             if (!record.date || record.date.substring(0,7) !== filterMonth) return;
+
             const tr = document.createElement("tr");
             const whoClass = getWHOCategory(record.sys, record.dia);
-            tr.innerHTML = `
-                <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
-                <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
-                <td><input type="number" class="${whoClass}" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)"></td>
-                <td><input type="number" class="${whoClass}" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)"></td>
-                <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
-                <td><input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)"></td>
-                <td><input type="checkbox" style="width:20px; height:20px;" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)"></td>
-                <td><button onclick="remove(${index})" style="background:#fed7d7; color:#c53030; white-space:nowrap;">刪除</button></td>
-            `;
+
+            if (!isMobile) {
+
+                tr.innerHTML = `
+                    <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
+                    <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
+                    <td><input type="number" class="${whoClass}" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)"></td>
+                    <td><input type="number" class="${whoClass}" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)"></td>
+                    <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
+                    <td><input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)"></td>
+                    <td><input type="checkbox" style="width:20px; height:20px;" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)"></td>
+                    <td><button onclick="remove(${index})" style="background:#fed7d7; color:#c53030; white-space:nowrap;">刪除</button></td>
+                `;
+
+            } else {
+
+                tr.innerHTML = `
+                    <td>
+                        <div class="card-row">
+                            <div class="card-label">日期與時間</div>
+                            <div class="card-value">${record.date} ${record.time || ""}</div>
+                        </div>
+
+                        <div class="card-row">
+                            <div class="card-label">血壓</div>
+                            <div class="card-value">${record.sys || ""} / ${record.dia || ""} mmHg</div>
+                        </div>
+
+                        <div class="card-row">
+                            <div class="card-label">心跳</div>
+                            <div class="card-value">${record.hr || ""} 次/分</div>
+                        </div>
+
+                        <div class="card-row">
+                            <div class="card-label">服藥狀態</div>
+                            <div class="card-value">${record.tookMed ? "已服藥" : "未服藥"}</div>
+                        </div>
+
+                        <div class="card-row">
+                            <div class="card-label">備註</div>
+                            <div class="card-value">${record.note || ""}</div>
+                        </div>
+
+                        <button onclick="remove(${index})" class="card-delete-btn">刪除</button>
+                    </td>
+                `;
+            }
+
             tbody.appendChild(tr);
         });
     }
+
 
     /* 需求 1-2: 新增下載Excel功能，包含趨勢圖 */
     async function downloadExcel() {
@@ -1071,4 +1180,3 @@ function logout(isAuto = false) {
 
 </body>
 </html>
-

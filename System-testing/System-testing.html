@@ -6,6 +6,12 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<!-- PWA 設定開始：不影響原有邏輯 -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#3182ce">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<!-- PWA 設定結束 -->
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -1225,6 +1231,22 @@ function logout(isAuto = false) {
         reader.readAsText(file, "UTF-8");
     }
 </script>
+
+<!-- PWA Service Worker 註冊開始 -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./service-worker.js')
+        .then(function(registration) {
+            console.log('ServiceWorker 註冊成功:', registration.scope);
+        })
+        .catch(function(error) {
+            console.log('ServiceWorker 註冊失敗:', error);
+        });
+    });
+}
+</script>
+<!-- PWA Service Worker 註冊結束 -->
 
 </body>
 </html>

@@ -1,10 +1,10 @@
-﻿// PWA 快取版本號
+// PWA 快取版本號
 const CACHE_NAME = 'bp-system-v1';
 
 // 要快取的檔案
 const urlsToCache = [
   './',
-  './System-testing-2.html',
+  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'

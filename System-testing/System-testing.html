@@ -549,6 +549,55 @@
 
     })();
 
+    // ============================================
+// iPhone PWA 新增紀錄後自動滾動至最後一筆
+// 僅在 iOS 且 standalone (PWA) 模式啟用
+// 不影響桌機版與原有新增邏輯
+// ============================================
+
+(function () {
+
+    const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+
+    if (!isIOS || !isStandalone) return;
+
+    // 等待 DOM ready
+    window.addEventListener("load", function () {
+
+        const addBtn = document.querySelector(".add-btn");
+
+        if (!addBtn) return;
+
+        addBtn.addEventListener("click", function () {
+
+            // 等待原本 addRecord() 執行完成與 render 完成
+            setTimeout(function () {
+
+                const recordsBody = document.getElementById("records");
+
+                if (!recordsBody) return;
+
+                const rows = recordsBody.querySelectorAll("tr");
+
+                if (rows.length === 0) return;
+
+                const lastRow = rows[rows.length - 1];
+
+                lastRow.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+
+            }, 500);
+
+        });
+
+    });
+
+})();
+
 const firebaseConfig = {
   apiKey: "AIzaSyC9SRCt-excgmYGS-f2va3CCWoUbpvjkPs",
   authDomain: "system-testing-4e002.firebaseapp.com",

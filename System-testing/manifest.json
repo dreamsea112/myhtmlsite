@@ -1,7 +1,7 @@
-﻿{
+{
   "name": "血壓健康雲端管理系統",
   "short_name": "血壓管理",
-  "start_url": "./index.html",
+  "start_url": "./System-testing.html",
   "display": "standalone",
   "background_color": "#f8f9fa",
   "theme_color": "#3182ce",

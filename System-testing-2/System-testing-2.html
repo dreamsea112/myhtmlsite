@@ -1,1 +1,1416 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>血壓健康雲端管理系統</title>
 
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- PWA 設定開始：不影響原有邏輯 -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#3182ce">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<!-- PWA 設定結束 -->
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+
+    <style>
+        /* 整體風格美化：改為淺色質感底色，深色文字 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            background: #f8f9fa; /* 淺灰色質感底 */
+            color: #2c3e50; /* 深色文字 */
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 30px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* 輕微陰影提升質感 */
+            padding: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 980px;
+        }
+        th, td {
+            border: none;
+            border-bottom: 1px solid #edf2f7; /* 改用細邊框線 */
+            padding: 12px 8px;
+            text-align: center;
+        }
+        th {
+            background: #f8f9fa;
+            color: #718096;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* 質感輸入框設定 */
+        input[type="number"], input[type="text"], input[type="date"], input[type="time"], select {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: #ffffff;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        th:nth-child(5), td:nth-child(5) { min-width: 90px; }
+        th:nth-child(6), td:nth-child(6) { min-width: 160px; }
+        th:nth-child(7), td:nth-child(7) { min-width: 90px; }
+
+        /* 按鈕美化 */
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        button:hover { opacity: 0.8; }
+        .add-btn {
+            margin-bottom: 15px;
+            margin-right: 8px;
+            background-color: #3182ce;
+            color: white;
+        }
+
+        #authLayer {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.98);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        #authBox {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 320px;
+            text-align: center;
+        }
+
+        /* 修改後的 WHO 顏色提示：僅套用在輸入框背景，不變更整個儲存格底色 */
+        input.bp-normal { background-color: #f0fff4 !important; border-color: #c6f6d5 !important; } 
+        input.bp-elevated { background-color: #fffaf0 !important; border-color: #feebc8 !important; } 
+        input.bp-stage1 { background-color: #fff5f5 !important; border-color: #fed7d7 !important; } 
+        input.bp-stage2 { background-color: #fff5f5 !important; border-color: #feb2b2 !important; color: #c53030 !important; font-weight: bold; }
+
+        #medReminder, #avgInfo {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #e53e3e;
+            font-weight: bold;
+        }
+
+        #stockReminder {
+            margin-bottom: 15px;
+            text-align: center;
+            color: #dd6b20;
+            font-weight: bold;
+            background: #fffaf0;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+            border: 1px solid #feebc8;
+        }
+
+        #chartLayer {
+            position: fixed;
+            inset: 0;
+            background: #f8f9fa;
+            display: none;
+            flex-direction: column;
+            padding: 25px;
+            z-index: 999;
+            overflow-y: auto;
+        }
+        
+        #calendarLayer {
+            position: fixed;
+            inset: 0;
+            background: #f8f9fa;
+            display: none;
+            flex-direction: column;
+            padding: 25px;
+            z-index: 998;
+            overflow-y: auto;
+        }
+        .cal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto 20px auto;
+            width: 100%;
+        }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .cal-day-name {
+            text-align: center;
+            font-weight: bold;
+            background: #edf2f7;
+            padding: 8px;
+            border-radius: 4px;
+            color: #4a5568;
+        }
+        .cal-date-cell {
+            aspect-ratio: 1 / 1;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            box-sizing: border-box; 
+        }
+        /* 月曆超標提示改為淺紅色圓點或底色 */
+        .cal-date-cell.bp-high { background-color: #fff5f5; border-color: #feb2b2; }
+
+        #pdfTemplate {
+            display: none;
+            padding: 40px;
+            color: #333;
+            background: white;
+        }
+
+        /* 質感底部資訊欄設定 */
+        .system-footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+        }
+        .system-version {
+            font-size: 13px;
+            letter-spacing: 2px;
+            color: #a0aec0;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .system-title-pro {
+            display: block;
+            font-size: 16px;
+            color: #4a5568;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* ========================= */
+        /* 手機專用卡片式顯示樣式新增 */
+        /* 僅在 768px 以下啟動 */
+        /* ========================= */
+
+        @media (max-width: 768px) {
+
+    .table-wrapper {
+        box-shadow: none;
+        padding: 0;
+        background: transparent;
+    }
+
+    table thead {
+        display: none;
+    }
+
+    table {
+        min-width: 100%;
+    }
+
+    table tbody tr {
+        display: block;
+        background: white;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        padding: 15px;
+    }
+
+    table tbody td {
+        display: block;
+        border: none;
+        padding: 0;
+    }
+
+    /* 新增多欄排列系統 */
+
+    .card-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .card-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .card-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-field label {
+        font-size: 12px;
+        margin-bottom: 3px;
+        color: #4a5568;
+    }
+
+    .card-field input {
+        width: 100%;
+    }
+
+.field-center {
+    display: flex;
+    flex-direction: column; /* 讓 label 和 input 垂直排列 */
+    align-items: center;    /* 水平置中 */
+    justify-content: center; /* 垂直置中 (若高度足夠時有效) */
+}
+
+.card-delete-btn {
+    width: 100%;
+    background: #fed7d7;
+    color: #c53030;
+    border-radius: 8px;
+    padding: 6px 0;
+    font-size: 14px;
+}
+
+}
+
+    </style>
+</head>
+<body>
+
+<div id="authLayer">
+    <div id="authBox">
+        <h3 style="margin-top:0;">系統安全驗證</h3>
+        <p style="color:#718096; font-size:14px;">請輸入存取密碼以同步健康紀錄</p>
+        <input type="password" id="authPwd" placeholder="請輸入密碼" style="margin-bottom:15px;" onkeydown="if(event.keyCode==13) verifyPassword()">
+        <button onclick="verifyPassword()" style="width:100%; background:#3182ce; color:white;">驗證並登入</button>
+        <div id="authMsg" style="margin-top:10px; color:#e53e3e; font-size:14px;"></div>
+    </div>
+</div>
+
+<div id="chartLayer">
+    <div style="text-align:right; margin-bottom:15px;">
+        <button onclick="toggleChart(false)" style="background:#4a5568; color:white;">關閉分析面板</button>
+    </div>
+    <div style="text-align:center; margin-bottom:25px;">
+        <h2 style="font-size:24px; margin:0; color:#2d3748;">真實健康數據</h2>
+        <p style="color:#718096;">數據根據您的歷史紀錄即時計算</p>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; flex:1; max-width:1200px; margin:0 auto; width:100%;">
+        <div style="height:350px; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);"><canvas id="bpChart"></canvas></div>
+        <div style="height:350px; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);"><canvas id="weekChart"></canvas></div>
+        <div style="height:350px; grid-column: span 2; background:white; padding:15px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);"><canvas id="distributionChart"></canvas></div>
+    </div>
+</div>
+
+<div id="calendarLayer">
+    <div style="text-align:right; margin-bottom:15px;">
+        <button onclick="toggleCalendar(false)" style="background:#4a5568; color:white;">關閉月曆</button>
+    </div>
+    <div class="cal-header">
+        <button onclick="changeCalMonth(-1)">上個月</button>
+        <h2 id="calTitle" style="margin:0; color:#2d3748;">2024年01月</h2>
+        <button onclick="changeCalMonth(1)">下個月</button>
+    </div>
+    <div id="calGrid" class="cal-grid"></div>
+    <div style="text-align:center; margin-top:20px; color:#718096; font-size:14px;">
+        註記：淺紅色區塊代表該日曾有收縮壓超過140或舒張壓超過90之紀錄
+    </div>
+</div>
+
+<div id="pdfTemplate">
+    <h1 style="border-bottom: 2px solid #333; padding-bottom: 10px; margin-top: 0;">血壓健康回診報告</h1>
+    <p id="pdfDateRange" style="margin-top: 10px;"></p>
+    <div id="pdfStats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;"></div>
+    <div id="pdfTableArea"></div>
+</div>
+
+<div id="stockReminder">藥物剩餘量警告：庫存即將不足，請記得回診領藥</div>
+<div id="medReminder" style="display:none;">提示：今日尚未勾選任何已服藥紀錄</div>
+<div id="avgInfo" style="display:none;"></div>
+
+<h1>血壓健康雲端管理系統</h1>
+
+<div class="filter-section" style="text-align:center; margin-bottom:20px;">
+    <button class="add-btn" onclick="addRecord()">新增紀錄</button>
+    <button class="add-btn" style="background-color:#38a169;" onclick="openAvgCalculator()">計算平均值</button>
+    <button class="add-btn" style="background-color:#9f7aea;" onclick="quickMedRecord()">僅紀錄服藥</button>
+    <button class="add-btn" style="background-color:#718096;" onclick="downloadCSV()">下載CSV</button>
+    <input type="file" id="csvUpload" accept=".csv" style="display:none;" onchange="importCSV(this)">
+    <button class="add-btn" style="background-color:#5a67d8;" onclick="document.getElementById('csvUpload').click()">還原CSV</button>
+    <button class="add-btn" style="background-color:#ed8936;" onclick="downloadExcel()">下載Excel</button>
+    <button class="add-btn" style="background-color:#48bb78;" onclick="toggleChart(true)">顯示數據分析</button>
+    <button class="add-btn" style="background-color:#38b2ac;" onclick="toggleCalendar(true)">月曆檢視</button>
+    <button class="add-btn" style="background-color:#e53e3e; color:white;" onclick="logout()">登出系統</button>
+    <div style="margin-top:15px; color:#4a5568;">
+        <span>剩餘藥量：</span>
+        <input type="number" id="drugStock" style="width:80px; display:inline-block;" onchange="updateStock(this.value)"> 天
+        <span style="margin-left:20px;">月份篩選：</span>
+        <select id="monthFilter" style="width:140px; display:inline-block;" onchange="loadRecords()"></select>
+    </div>
+</div>
+
+<div class="table-wrapper">
+<table>
+    <thead>
+        <tr>
+            <th>日期</th>
+            <th>時間</th>
+            <th>收縮壓<br>(mmHg)</th>
+            <th>舒張壓<br>(mmHg)</th>
+            <th>心跳<br>(次/分)</th>
+            <th>備註</th>
+            <th>已服藥<br>(降壓安/脂利降)</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody id="records"></tbody>
+</table>
+</div>
+
+<div class="system-footer">
+    <span class="system-title-pro">智慧血壓雲端管理系統 (AI-Health Cloud Support)</span>
+    <span class="system-version">SYSTEM VERSION 1.2 PRO-ENTERPRISE</span>
+    <div style="font-size: 11px; color: #cbd5e0; margin-top: 8px;">加密連線安全存取中 (SSL Encrypted Connection)</div>
+    <div style="font-size: 11px; color: #a0aec0; margin-top: 4px;">System Architect by Ching Tsung</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+    const STORAGE_KEY = "bloodPressureRecords";
+    const STOCK_KEY = "meta/drugStock";
+    let chartInstance = null; 
+    let weekChartInstance = null;
+    let distChartInstance = null;
+    let calViewDate = new Date();
+    // 自動登出計時器（登入後 10 分鐘強制登出）
+    let autoLogoutTimer = null;
+
+    // ============================================
+    // iPhone PWA 企業級下拉重新整理 + Loading 動畫
+    // 僅在 iOS 且 standalone (PWA) 模式啟用
+    // 不影響原有任何邏輯與樣式
+    // ============================================
+
+    (function () {
+
+        const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
+
+        if (!isIOS || !isStandalone) return;
+
+        let startY = 0;
+        let isPulling = false;
+        let readyToRefresh = false;
+        const triggerDistance = 100;
+
+        // 建立提示層
+        const refreshLayer = document.createElement("div");
+        refreshLayer.style.position = "fixed";
+        refreshLayer.style.top = "0";
+        refreshLayer.style.left = "0";
+        refreshLayer.style.right = "0";
+        refreshLayer.style.height = "60px";
+        refreshLayer.style.background = "#3182ce";
+        refreshLayer.style.color = "white";
+        refreshLayer.style.display = "flex";
+        refreshLayer.style.alignItems = "center";
+        refreshLayer.style.justifyContent = "center";
+        refreshLayer.style.fontSize = "14px";
+        refreshLayer.style.fontWeight = "600";
+        refreshLayer.style.transform = "translateY(-100%)";
+        refreshLayer.style.transition = "transform 0.2s ease";
+        refreshLayer.style.zIndex = "2000";
+        refreshLayer.textContent = "下拉以重新整理";
+
+        document.body.appendChild(refreshLayer);
+
+        function showLayer(text) {
+            refreshLayer.textContent = text;
+            refreshLayer.style.transform = "translateY(0)";
+        }
+
+        function hideLayer() {
+            refreshLayer.style.transform = "translateY(-100%)";
+        }
+
+        function showLoading() {
+
+            refreshLayer.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<div style="width:18px;height:18px;border:3px solid white;border-top:3px solid transparent;border-radius:50%;animation:spinRefresh 1s linear infinite;"></div>' +
+                '<span>重新整理中...</span>' +
+                '</div>';
+
+        }
+
+        // 加入 spinner 動畫 keyframes
+        const style = document.createElement("style");
+        style.innerHTML =
+            "@keyframes spinRefresh {" +
+            "0% { transform: rotate(0deg); }" +
+            "100% { transform: rotate(360deg); }" +
+            "}";
+        document.head.appendChild(style);
+
+        window.addEventListener("touchstart", function (e) {
+
+            if (window.pageYOffset <= 1) {
+
+                startY = e.touches[0].clientY;
+                isPulling = true;
+                readyToRefresh = false;
+            }
+
+        }, { passive: true });
+
+        window.addEventListener("touchmove", function (e) {
+
+            if (!isPulling) return;
+
+            const currentY = e.touches[0].clientY;
+            const distance = currentY - startY;
+
+            if (distance > 30 && !readyToRefresh) {
+                showLayer("下拉以重新整理");
+            }
+
+            if (distance > triggerDistance) {
+                showLayer("放開即可重新整理");
+                readyToRefresh = true;
+            }
+
+        }, { passive: true });
+
+        window.addEventListener("touchend", function () {
+
+            if (readyToRefresh) {
+                showLoading();
+
+                setTimeout(function () {
+                    location.reload();
+                }, 600);
+
+            } else {
+                hideLayer();
+            }
+
+            isPulling = false;
+            readyToRefresh = false;
+
+        });
+
+    })();
+
+    // ============================================
+// iPhone PWA 新增紀錄後自動滾動至最後一筆
+// 僅在 iOS 且 standalone (PWA) 模式啟用
+// 不影響桌機版與原有新增邏輯
+// ============================================
+
+(function () {
+
+    const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+
+    if (!isIOS || !isStandalone) return;
+
+    // 等待 DOM ready
+    window.addEventListener("load", function () {
+
+        const addBtn = document.querySelector(".add-btn");
+
+        if (!addBtn) return;
+
+        addBtn.addEventListener("click", function () {
+
+            // 等待原本 addRecord() 執行完成與 render 完成
+            setTimeout(function () {
+
+                const recordsBody = document.getElementById("records");
+
+                if (!recordsBody) return;
+
+                const rows = recordsBody.querySelectorAll("tr");
+
+                if (rows.length === 0) return;
+
+                const lastRow = rows[rows.length - 1];
+
+                lastRow.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+
+            }, 500);
+
+        });
+
+    });
+
+})();
+
+  apiKey: "AIzaSyA8zS0U0VrZMDs_W-m7HC63nyijkN9azUQ",
+  authDomain: "system-testing-2.firebaseapp.com",
+  databaseURL: "https://system-testing-2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "system-testing-2",
+  storageBucket: "system-testing-2.firebasestorage.app",
+  messagingSenderId: "222438010484",
+  appId: "1:222438010484:web:9b8818b8f29fd372456b21"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database(undefined, { experimentalForceLongPolling: true });
+    const dbRef = database.ref("bloodPressureRecords");
+
+    function verifyPassword() {
+    // 1. 抓取 UI 上輸入框的值 (使用者輸入什麼，這變數就是什麼)
+    const pwd = document.getElementById("authPwd").value;
+    const authMsg = document.getElementById("authMsg");
+
+    authMsg.textContent = "驗證中...";
+
+    // 2. 呼叫 Firebase 嘗試寫入權限開關
+    // 這裡送出的 pwd 會被 Firebase Rules 的 newData.child('pwd').val() 拿去比對
+    database.ref("__auth_guard").set({ 
+        pwd: pwd,        // 傳送變數，HTML 原始碼裡沒有真實密碼字串
+        verified: true 
+    })
+    .then(() => {
+        // 如果密碼正確，Firebase Rules 允許寫入，則執行以下成功邏輯
+        localStorage.setItem("bp_auth_ok", "1");
+        // 將密碼暫存於 Session，以便登出時可發送指令關閉權限
+        localStorage.setItem("temp_pwd_session", pwd); 
+        document.getElementById("authLayer").style.display = "none";
+        initMonthFilter(); 
+        loadRecords();
+        loadStock();
+        // 啟動登入後 10 分鐘強制自動登出
+        startAutoLogoutTimer();
+    })
+    .catch((error) => {
+        // 如果密碼錯誤，Firebase Rules 會回傳 Permission Denied，執行失敗邏輯
+        console.error("驗證失敗:", error);
+        authMsg.textContent = "密碼錯誤，請重新輸入";
+        // 清空輸入框方便重新輸入
+        document.getElementById("authPwd").value = "";
+    });
+}
+
+    window.addEventListener("load", () => {
+    if (localStorage.getItem("bp_auth_ok") === "1") {
+        document.getElementById("authLayer").style.display = "none";
+
+        initMonthFilter();
+        loadRecords();
+        loadStock();
+
+        // 關鍵：重新整理後仍會啟動自動登出計時
+        startAutoLogoutTimer();
+    }
+});
+
+    function loadStock() {
+        const localStock = localStorage.getItem("drugStockCount") || 0;
+        document.getElementById("drugStock").value = localStock;
+        checkStockAlert(localStock);
+
+        database.ref(STOCK_KEY).once("value").then(snapshot => {
+            const cloudStock = snapshot.val();
+            if (cloudStock !== null && cloudStock !== undefined) {
+                document.getElementById("drugStock").value = cloudStock;
+                localStorage.setItem("drugStockCount", cloudStock);
+                checkStockAlert(cloudStock);
+            }
+        }).catch(err => {
+            console.log("雲端藥量讀取失敗或路徑尚未建立");
+        });
+    }
+
+    function updateStock(val) {
+        if (val === "" || val === undefined) return;
+        const numVal = Number(val);
+        localStorage.setItem("drugStockCount", numVal);
+        database.ref(STOCK_KEY).set(numVal);
+        checkStockAlert(numVal);
+    }
+
+    function checkStockAlert(stock) {
+        const reminder = document.getElementById("stockReminder");
+        const sCount = Number(stock);
+        if (sCount <= 7) {
+            reminder.style.display = "block";
+            reminder.textContent = "藥物剩餘量警告：目前僅剩 " + sCount + " 顆，請儘速回診領藥";
+        } else {
+            reminder.style.display = "none";
+        }
+    }
+
+    function initMonthFilter() {
+        const selector = document.getElementById("monthFilter");
+        if (selector.options.length > 0) return;
+        const now = new Date();
+        const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0');
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = currentMonth;
+        defaultOpt.textContent = currentMonth;
+        selector.appendChild(defaultOpt);
+    }
+
+    function loadRecords() {
+        dbRef.once("value").then(snapshot => {
+            const data = snapshot.val() || [];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            updateMonthList(data);
+            render(data);
+        });
+    }
+
+    function updateMonthList(data) {
+        const selector = document.getElementById("monthFilter");
+        const currentVal = selector.value;
+        const months = new Set();
+        data.forEach(r => { if (r.date) months.add(r.date.substring(0, 7)); });
+        const sortedMonths = Array.from(months).sort().reverse();
+        selector.innerHTML = "";
+        sortedMonths.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m;
+            selector.appendChild(opt);
+        });
+        if (currentVal && Array.from(months).includes(currentVal)) {
+            selector.value = currentVal;
+        } else if (sortedMonths.length > 0) {
+            selector.value = sortedMonths[0];
+        }
+    }
+
+    function getWHOCategory(sys, dia) {
+        const s = Number(sys);
+        const d = Number(dia);
+        if (!s || !d) return "";
+        if (s >= 160 || d >= 100) return "bp-stage2"; 
+        if (s >= 140 || d >= 90) return "bp-stage1"; 
+        if (s >= 120 || d >= 80) return "bp-elevated"; 
+        return "bp-normal"; 
+    }
+
+    function updateSilent(index, key, value, inputElement) {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        if (key === 'tookMed') {
+            let currentStock = Number(document.getElementById("drugStock").value) || 0;
+            if (value === true && !data[index].tookMed) {
+                currentStock = Math.max(0, currentStock - 1);
+            } else if (value === false && data[index].tookMed) {
+                currentStock += 1;
+            }
+            updateStock(currentStock);
+            document.getElementById("drugStock").value = currentStock;
+        }
+        data[index][key] = value;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        dbRef.set(data);
+
+        // 更新輸入框顏色
+        if (inputElement && (key === 'sys' || key === 'dia')) {
+            const row = inputElement.closest('tr');
+            const sysInput = row.querySelector('td:nth-child(3) input');
+            const diaInput = row.querySelector('td:nth-child(4) input');
+            const category = getWHOCategory(sysInput.value, diaInput.value);
+            sysInput.className = category;
+            diaInput.className = category;
+        }
+    }
+
+        function render(data) {
+        const tbody = document.getElementById("records");
+        tbody.innerHTML = "";
+        const nowLocal = new Date();
+        const today = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
+        const filterMonth = document.getElementById("monthFilter").value;
+        let todaySys = 0, todayDia = 0, todayCount = 0, tookMedToday = false;
+
+        data.forEach(r => {
+            if (r.date === today) {
+                if (r.sys && r.dia) { todaySys += Number(r.sys); todayDia += Number(r.dia); todayCount++; }
+                if (r.tookMed) tookMedToday = true;
+            }
+        });
+
+        document.getElementById("medReminder").style.display = tookMedToday ? "none" : "block";
+        if (todayCount > 0) {
+            document.getElementById("avgInfo").style.display = "block";
+            document.getElementById("avgInfo").textContent = "今日平均收縮壓：" + Math.round(todaySys / todayCount) + " / 舒張壓：" + Math.round(todayDia / todayCount);
+        } else {
+            document.getElementById("avgInfo").style.display = "none";
+        }
+
+        const isMobile = window.innerWidth <= 768;
+
+        data.forEach((record, index) => {
+            if (!record.date || record.date.substring(0,7) !== filterMonth) return;
+
+            const tr = document.createElement("tr");
+            const whoClass = getWHOCategory(record.sys, record.dia);
+
+            if (!isMobile) {
+
+                tr.innerHTML = `
+                    <td><input type="date" value="${record.date}" onchange="updateSilent(${index}, 'date', this.value, this)"></td>
+                    <td><input type="time" value="${record.time}" onchange="updateSilent(${index}, 'time', this.value, this)"></td>
+                    <td><input type="number" class="${whoClass}" value="${record.sys}" onchange="updateSilent(${index}, 'sys', this.value, this)"></td>
+                    <td><input type="number" class="${whoClass}" value="${record.dia}" onchange="updateSilent(${index}, 'dia', this.value, this)"></td>
+                    <td><input type="number" value="${record.hr}" onchange="updateSilent(${index}, 'hr', this.value, this)"></td>
+                    <td><input type="text" value="${record.note}" onchange="updateSilent(${index}, 'note', this.value, this)"></td>
+                    <td><input type="checkbox" style="width:20px; height:20px;" ${record.tookMed ? "checked" : ""} onchange="updateSilent(${index}, 'tookMed', this.checked, this)"></td>
+                    <td><button onclick="remove(${index})" style="background:#fed7d7; color:#c53030; white-space:nowrap;">刪除</button></td>
+                `;
+
+} else {
+
+    tr.innerHTML = `
+        <td>
+
+            <div class="card-grid-2">
+                <div class="card-field">
+                    <label>日期</label>
+                    <input type="date" value="${record.date}"
+                        onchange="updateSilent(${index}, 'date', this.value, this)">
+                </div>
+
+                <div class="card-field">
+                    <label>時間</label>
+                    <input type="time" value="${record.time || ""}"
+                        onchange="updateSilent(${index}, 'time', this.value, this)">
+                </div>
+            </div>
+
+            <div class="card-grid-3">
+                <div class="card-field">
+                    <label>收縮壓</label>
+                    <input type="number" class="${whoClass}" value="${record.sys || ""}"
+                        onchange="updateSilent(${index}, 'sys', this.value, this)">
+                </div>
+
+                <div class="card-field">
+                    <label>舒張壓</label>
+                    <input type="number" class="${whoClass}" value="${record.dia || ""}"
+                        onchange="updateSilent(${index}, 'dia', this.value, this)">
+                </div>
+
+                <div class="card-field">
+                    <label>心跳</label>
+                    <input type="number" value="${record.hr || ""}"
+                        onchange="updateSilent(${index}, 'hr', this.value, this)">
+                </div>
+            </div>
+
+<div class="card-grid-3">
+    <div class="card-field">
+        <label>備註</label>
+        <input type="text" value="${record.note || ""}"
+            onchange="updateSilent(${index}, 'note', this.value, this)">
+    </div>
+
+    <div class="card-field field-center">
+        <label>是否服藥</label>
+        <input type="checkbox" style="width:20px; height:20px;"
+            ${record.tookMed ? "checked" : ""}
+            onchange="updateSilent(${index}, 'tookMed', this.checked, this)">
+    </div>
+
+    <div class="card-field">
+        <label>&nbsp;</label>
+        <button onclick="remove(${index})" class="card-delete-btn">刪除</button>
+    </div>
+</div>
+
+        </td>
+    `;
+}
+
+            tbody.appendChild(tr);
+        });
+    }
+
+
+    /* 需求 1-2: 新增下載Excel功能，包含趨勢圖 */
+    async function downloadExcel() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        if (!data.length) { alert("無數據可匯出"); return; }
+
+        // 建立活頁簿與工作表
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('血壓紀錄');
+
+        // 設定欄位標題與寬度
+        worksheet.columns = [
+            { header: '時間', key: 'date', width: 15 },
+            { header: '時段', key: 'time', width: 12 },
+            { header: '收縮壓', key: 'sys', width: 12 },
+            { header: '舒張壓', key: 'dia', width: 12 }
+        ];
+
+        // 加入數據內容
+        data.forEach(r => {
+            worksheet.addRow({
+                date: r.date,
+                time: r.time,
+                sys: Number(r.sys) || 0,
+                dia: Number(r.dia) || 0
+            });
+        });
+
+        // 取得最近 30 筆數據並生成趨勢圖圖片
+        const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+        const last30 = validData.slice(-30);
+
+        if (last30.length > 0) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 800; // 寬度加大讓圖表更清晰
+            canvas.height = 400;
+            const ctx = canvas.getContext('2d');
+            
+            // 繪製離線圖表
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: last30.map(r => r.date.substring(5) + " " + r.time),
+                    datasets: [
+                        { label: '收縮壓', data: last30.map(r => r.sys), borderColor: '#e53e3e', backgroundColor: '#e53e3e', tension: 0.3, fill: false },
+                        { label: '舒張壓', data: last30.map(r => r.dia), borderColor: '#3182ce', backgroundColor: '#3182ce', tension: 0.3, fill: false }
+                    ]
+                },
+                options: { 
+                    responsive: false, 
+                    animation: false,
+                    devicePixelRatio: 1,
+                    plugins: { 
+                        title: { display: true, text: '最近30筆趨勢圖', font: { size: 18 } },
+                        legend: { labels: { font: { size: 14 } } }
+                    },
+                    scales: {
+                        y: { beginAtZero: false, title: { display: true, text: 'mmHg' } }
+                    }
+                }
+            });
+
+            // 緩衝等待 Chart 繪製完成
+            await new Promise(resolve => setTimeout(resolve, 800));
+            const base64Image = canvas.toDataURL('image/png');
+
+            // 將圖片加到活頁簿
+            const imageId = workbook.addImage({
+                base64: base64Image,
+                extension: 'png',
+            });
+
+            // 將圖表置於數據下方 (跳過兩列)
+            const chartRow = data.length + 3;
+            worksheet.addImage(imageId, {
+                tl: { col: 0, row: chartRow },
+                ext: { width: 600, height: 300 }
+            });
+        }
+
+        // 匯出檔案
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `血壓紀錄_${new Date().toLocaleDateString()}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    function generatePDF() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const filterMonth = document.getElementById("monthFilter").value;
+        const monthData = data.filter(r => r.date.substring(0, 7) === filterMonth);
+        if (monthData.length === 0) { alert("此月份無紀錄"); return; }
+        const template = document.getElementById("pdfTemplate");
+        
+        // 確保範本顯示以進行捕捉
+        template.style.display = "block"; 
+        document.getElementById("pdfDateRange").textContent = "報告月份：" + filterMonth;
+        
+        const sysValues = monthData.filter(r => r.sys).map(r => Number(r.sys));
+        const avgSys = sysValues.length > 0 ? Math.round(sysValues.reduce((a, b) => a + b, 0) / sysValues.length) : 0;
+        const maxSys = sysValues.length > 0 ? Math.max(...sysValues) : 0;
+        
+        document.getElementById("pdfStats").innerHTML = `
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">平均收縮壓<br><b style="font-size:24px; color:#2b6cb0;">${avgSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">最高收縮壓<br><b style="font-size:24px; color:#c53030;">${maxSys}</b></div>
+            <div style="padding:15px; background:#f7fafc; border:1px solid #e2e8f0; text-align:center; border-radius:8px;">總測量筆數<br><b style="font-size:24px; color:#2d3748;">${monthData.length}</b></div>
+        `;
+
+        // 核心修改：PDF 表格 CSS 加入強制換行與欄位比例優化
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin-top:20px; border:1px solid #e2e8f0; table-layout: fixed; font-size: 11px;">
+            <thead>
+                <tr style="background:#edf2f7;">
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 150px;">時間</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 60px;">收縮壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px; width: 60px;">舒張壓</th>
+                    <th style="border:1px solid #cbd5e0; padding:10px;">備註</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        
+        monthData.forEach(r => {
+            // 備註欄位加入 word-break: break-all 確保不溢出
+            tableHtml += `<tr>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.date} ${r.time}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.sys}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:center;">${r.dia}</td>
+                <td style="border:1px solid #cbd5e0; padding:8px; text-align:left; word-break: break-all; white-space: normal; line-height: 1.4;">${r.note || ""}</td>
+            </tr>`;
+        });
+        tableHtml += `</tbody></table>`;
+        document.getElementById("pdfTableArea").innerHTML = tableHtml;
+        
+        // 核心修改：優化 opt 設定，避免自動插入分頁符導致第一頁空白
+        const opt = { 
+            margin: 10, 
+            filename: `血壓報告_${filterMonth}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2, useCORS: true, logging: false }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: 'css', avoid: 'tr' } // 避免表格列跨頁斷裂，且僅依據內容自動換頁
+        };
+
+        html2pdf().from(template).set(opt).save().then(() => { 
+            template.style.display = "none"; 
+        });
+    }
+
+    function toggleChart(show) {
+        const layer = document.getElementById("chartLayer");
+        if (!show) { layer.style.display = "none"; return; }
+        layer.style.display = "flex";
+        
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const validData = data.filter(r => r.sys && r.dia).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+        const last30 = validData.slice(-30);
+
+        // 1. 真實趨勢圖
+        const ctx = document.getElementById('bpChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: last30.map(r => r.date.substring(5) + " " + r.time),
+                datasets: [
+                    { label: '收縮壓', data: last30.map(r => r.sys), borderColor: '#e53e3e', tension: 0.3, fill: false },
+                    { label: '舒張壓', data: last30.map(r => r.dia), borderColor: '#3182ce', tension: 0.3, fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '最近30筆趨勢分析', font: { size: 16 } } } }
+        });
+
+        // 2. 真實週趨勢圖
+        const weekSums = [0,0,0,0,0,0,0], weekCounts = [0,0,0,0,0,0,0];
+        validData.forEach(r => {
+            const day = new Date(r.date).getDay();
+            weekSums[day] += Number(r.sys);
+            weekCounts[day]++;
+        });
+        const weekAverages = weekSums.map((sum, i) => weekCounts[i] > 0 ? Math.round(sum / weekCounts[i]) : 0);
+
+        const weekCtx = document.getElementById('weekChart').getContext('2d');
+        if (weekChartInstance) weekChartInstance.destroy();
+        weekChartInstance = new Chart(weekCtx, {
+            type: 'bar',
+            data: {
+                labels: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'],
+                datasets: [{ label: '收縮壓週平均', data: weekAverages, backgroundColor: '#81e6d9' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '生活作息週分析（真實數據）', font: { size: 16 } } } }
+        });
+
+        // 3. 真實分佈圖
+        let dist = [0,0,0,0]; // 正常, 偏高, 一級, 二級
+        validData.forEach(r => {
+            const cat = getWHOCategory(r.sys, r.dia);
+            if (cat === "bp-normal") dist[0]++;
+            else if (cat === "bp-elevated") dist[1]++;
+            else if (cat === "bp-stage1") dist[2]++;
+            else if (cat === "bp-stage2") dist[3]++;
+        });
+
+        const distCtx = document.getElementById('distributionChart').getContext('2d');
+        if (distChartInstance) distChartInstance.destroy();
+        distChartInstance = new Chart(distCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常', '偏高', '一級高血壓', '二級高血壓'],
+                datasets: [{ data: dist, backgroundColor: ['#c6f6d5', '#feebc8', '#fed7d7', '#feb2b2'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '血壓分級健康分佈（真實數據）', font: { size: 16 } } } }
+        });
+    }
+
+    function toggleCalendar(show) {
+        const layer = document.getElementById("calendarLayer");
+        if (!show) { layer.style.display = "none"; return; }
+        layer.style.display = "flex";
+        renderCalendar();
+    }
+
+    function changeCalMonth(offset) {
+        calViewDate.setMonth(calViewDate.getMonth() + offset);
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById("calGrid");
+        const title = document.getElementById("calTitle");
+        const year = calViewDate.getFullYear(), month = calViewDate.getMonth();
+        title.textContent = year + " 年 " + (month + 1) + " 月";
+        grid.innerHTML = "";
+        const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
+        dayNames.forEach(d => {
+            const div = document.createElement("div");
+            div.className = "cal-day-name";
+            div.textContent = d;
+            grid.appendChild(div);
+        });
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement("div")); }
+        for (let d = 1; d <= daysInMonth; d++) {
+            const cell = document.createElement("div");
+            cell.className = "cal-date-cell";
+            const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
+            const dayRecords = data.filter(r => r.date === dateStr && r.sys && r.dia);
+            if (dayRecords.some(r => (Number(r.sys) >= 140 || Number(r.dia) >= 90))) cell.classList.add("bp-high");
+            if (dayRecords.length > 0) {
+                let tooltip = "";
+                dayRecords.forEach(r => tooltip += `${r.time} 血壓：${r.sys}/${r.dia}\n`);
+                cell.title = tooltip.trim();
+            }
+            cell.innerHTML = `<span style="font-weight:600;">${d}</span>`;
+            grid.appendChild(cell);
+        }
+    }
+
+    function save(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); dbRef.set(data); }
+
+    function addRecord() {
+        const now = new Date();
+        const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        data.push({ date: date, time: time, sys:"", dia:"", hr:"", note:"", tookMed:false });
+        save(data);
+        updateMonthList(data);
+        document.getElementById("monthFilter").value = date.substring(0, 7);
+        render(data);
+    }
+
+    /* 新增功能：快速紀錄服藥，不需填寫血壓數據 */
+    function quickMedRecord() {
+        const now = new Date();
+        const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        // 處理藥物庫存扣除邏輯
+        let currentStock = Number(document.getElementById("drugStock").value) || 0;
+        currentStock = Math.max(0, currentStock - 1);
+        updateStock(currentStock);
+        document.getElementById("drugStock").value = currentStock;
+
+        // 新增紀錄：血壓心跳留空，備註自動填入，勾選已服藥
+        data.push({ 
+            date: date, 
+            time: time, 
+            sys: "", 
+            dia: "", 
+            hr: "", 
+            note: "[僅服藥] 未量血壓", 
+            tookMed: true 
+        });
+
+        save(data);
+        updateMonthList(data);
+        document.getElementById("monthFilter").value = date.substring(0, 7);
+        render(data);
+    }
+
+    function remove(index) {
+    if (!confirm("確定要刪除這筆紀錄嗎？")) return;
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    /* 新增補償邏輯：若刪除的是已服藥紀錄，需將藥量加回 */
+    if (data[index] && data[index].tookMed === true) {
+        let currentStock = Number(document.getElementById("drugStock").value) || 0;
+        currentStock += 1;
+        updateStock(currentStock);
+        document.getElementById("drugStock").value = currentStock;
+    }
+
+    data.splice(index, 1);
+    save(data);
+    render(data);
+}
+
+/* 新增小工具：計算兩次血壓平均值並自動填入（優化輸入順序版） */
+    function openAvgCalculator() {
+        // 第一次測量數據輸入
+        const sys1 = prompt("第1次測量：請輸入 收縮壓 (高壓)");
+        if (sys1 === null) return;
+        const dia1 = prompt("第1次測量：請輸入 舒張壓 (低壓)");
+        if (dia1 === null) return;
+        const hr1 = prompt("第1次測量：請輸入 心跳");
+        if (hr1 === null) return;
+
+        // 第二次測量數據輸入
+        const sys2 = prompt("第2次測量：請輸入 收縮壓 (高壓)");
+        if (sys2 === null) return;
+        const dia2 = prompt("第2次測量：請輸入 舒張壓 (低壓)");
+        if (dia2 === null) return;
+        const hr2 = prompt("第2次測量：請輸入 心跳");
+        if (hr2 === null) return;
+
+        // 計算四捨五入後的平均值
+        const avgSys = Math.round((Number(sys1) + Number(sys2)) / 2);
+        const avgDia = Math.round((Number(dia1) + Number(dia2)) / 2);
+        const avgHr = Math.round((Number(hr1) + Number(hr2)) / 2);
+
+        // 驗證輸入是否為有效數字
+        if (isNaN(avgSys) || isNaN(avgDia) || isNaN(avgHr)) {
+            alert("輸入格式錯誤，請務必輸入數字");
+            return;
+        }
+
+        // 取得當前時間並封裝數據
+        const now = new Date();
+        const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        // 將平均值紀錄推送到資料陣列
+        data.push({ 
+            date: date, 
+            time: time, 
+            sys: avgSys.toString(), 
+            dia: avgDia.toString(), 
+            hr: avgHr.toString(), 
+            note: "取2次平均值", 
+            tookMed: false 
+        });
+
+        // 儲存並更新介面
+        save(data);
+        updateMonthList(data);
+        document.getElementById("monthFilter").value = date.substring(0, 7);
+        render(data);
+        alert("已完成722平均值計算並自動新增：\n平均收縮壓：" + avgSys + "\n平均舒張壓：" + avgDia + "\n平均心跳：" + avgHr);
+    }
+
+// 登入後啟動 10 分鐘強制自動登出機制 (各裝置獨立計算)
+function startAutoLogoutTimer() {
+    // 預防機制：若已有計時器存在，先清除以避免產生多重計時 Bug
+    if (autoLogoutTimer !== null) {
+        clearTimeout(autoLogoutTimer);
+        autoLogoutTimer = null;
+    }
+
+    // 設定 10 分鐘 (600,000 毫秒) 後觸發
+    autoLogoutTimer = setTimeout(function() {
+        // 安全檢查：確認目前仍處於登入狀態才執行
+        if (localStorage.getItem("bp_auth_ok") === "1") {
+            alert("系統已登入超過 10 分鐘，為了安全起見將自動登出。");
+            // 執行既有的登出邏輯，包含清除 Firebase 雲端權限
+            logout(true);  
+        }
+    }, 600000);
+}
+
+function logout(isAuto = false) {
+    // 若為手動登出，才詢問使用者確認
+    if (!isAuto) {
+        if (!confirm("確定要登出並關閉存取權限嗎？")) return;
+    }
+
+    // 從 localStorage 暫存中取得原本登入時用的密碼
+    const currentPwd = localStorage.getItem("temp_pwd_session"); 
+
+    database.ref("__auth_guard").set({
+        pwd: currentPwd || "", // 發送原本的密碼來獲得權限，並將 verified 變更為 false
+        verified: false
+    }).then(() => {
+        // 清除本地所有登入標記與暫存密碼
+        localStorage.removeItem("bp_auth_ok");
+        localStorage.removeItem("temp_pwd_session"); 
+
+        // 僅在手動登出時顯示提示
+        if (!isAuto) {
+            alert("已安全登出");
+        }
+
+        location.reload(); // 重新整理網頁回到驗證畫面
+    }).catch((error) => {
+        // 若權限不足或網路問題，仍清除本地標記並強制重整
+        console.error("登出程序異常:", error);
+        localStorage.removeItem("bp_auth_ok");
+        localStorage.removeItem("temp_pwd_session");
+        location.reload();
+    });
+}
+
+    function downloadCSV() {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        if (!data.length) return;
+        let csv = "日期,時間,收縮壓,舒張壓,心跳,備註,已服藥\n";
+        data.forEach(r => { csv += `${r.date},${r.time},${r.sys},${r.dia},${r.hr},${r.note},${r.tookMed ? "是" : "否"}\n`; });
+        const bom = "\uFEFF";
+        const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `血壓紀錄_${new Date().toLocaleDateString()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    /* 新增功能：導入並還原 CSV 資料 */
+    function importCSV(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        // 確認是否進行還原動作，此動作會覆蓋現有資料
+        if (!confirm("警告：還原 CSV 將會覆蓋目前的資料庫紀錄，確定要繼續嗎？")) {
+            input.value = ""; // 清空選取
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            const lines = content.split("\n");
+            const newData = [];
+
+            // 從第二行開始讀取 (跳過標題列)
+            for (let i = 1; i < lines.length; i++) {
+    // 1. 去掉整行頭尾的空白與換行符號 (\r, \n)
+    const line = lines[i].trim(); 
+    if (!line) continue;
+
+    // 2. 切割欄位
+    const parts = line.split(",");
+    
+    // 安全檢查：如果欄位少於 7 個，說明這行資料不完整，跳過它
+    if (parts.length < 7) continue;
+
+    // 3. 提取最後一欄（已服藥），pop() 會移除並回傳最後一個元素
+    const tookMedStr = parts.pop() || ""; 
+    const tookMed = tookMedStr.trim() === "是";
+
+    // 4. 定義前 5 個固定欄位
+    const date = parts[0] || "";
+    const time = parts[1] || "";
+    const sys  = parts[2] || "";
+    const dia  = parts[3] || "";
+    const hr   = parts[4] || "";
+
+    // 5. 處理備註：將剩餘的所有部分（從索引 5 開始）重新用逗號黏起來
+    // 這樣就算備註裡有英文逗號，也能完整還原
+    const note = parts.slice(5).join(","); 
+
+    newData.push({
+        date: date,
+        time: time,
+        sys: sys,
+        dia: dia,
+        hr: hr,
+        note: note,
+        tookMed: tookMed
+    });
+}
+            if (newData.length > 0) {
+                // 將解析後的數據儲存至 localStorage 與 Firebase
+                save(newData);
+                // 重新載入月份清單與畫面渲染
+                updateMonthList(newData);
+                render(newData);
+                alert("資料還原成功，共匯入 " + newData.length + " 筆紀錄。");
+            } else {
+                alert("還原失敗：檔案格式不符或無有效數據。");
+            }
+            input.value = ""; // 處理完畢後清空
+        };
+        // 使用 UTF-8 讀取檔案
+        reader.readAsText(file, "UTF-8");
+    }
+</script>
+
+<!-- PWA Service Worker 註冊開始 -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./service-worker.js')
+        .then(function(registration) {
+            console.log('ServiceWorker 註冊成功:', registration.scope);
+        })
+        .catch(function(error) {
+            console.log('ServiceWorker 註冊失敗:', error);
+        });
+    });
+}
+</script>
+<!-- PWA Service Worker 註冊結束 -->
+
+</body>
+</html>

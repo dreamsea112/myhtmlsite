@@ -432,6 +432,122 @@
     // 自動登出計時器（登入後 10 分鐘強制登出）
     let autoLogoutTimer = null;
 
+    // ============================================
+    // iPhone PWA 企業級下拉重新整理 + Loading 動畫
+    // 僅在 iOS 且 standalone (PWA) 模式啟用
+    // 不影響原有任何邏輯與樣式
+    // ============================================
+
+    (function () {
+
+        const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
+
+        if (!isIOS || !isStandalone) return;
+
+        let startY = 0;
+        let isPulling = false;
+        let readyToRefresh = false;
+        const triggerDistance = 100;
+
+        // 建立提示層
+        const refreshLayer = document.createElement("div");
+        refreshLayer.style.position = "fixed";
+        refreshLayer.style.top = "0";
+        refreshLayer.style.left = "0";
+        refreshLayer.style.right = "0";
+        refreshLayer.style.height = "60px";
+        refreshLayer.style.background = "#3182ce";
+        refreshLayer.style.color = "white";
+        refreshLayer.style.display = "flex";
+        refreshLayer.style.alignItems = "center";
+        refreshLayer.style.justifyContent = "center";
+        refreshLayer.style.fontSize = "14px";
+        refreshLayer.style.fontWeight = "600";
+        refreshLayer.style.transform = "translateY(-100%)";
+        refreshLayer.style.transition = "transform 0.2s ease";
+        refreshLayer.style.zIndex = "2000";
+        refreshLayer.textContent = "下拉以重新整理";
+
+        document.body.appendChild(refreshLayer);
+
+        function showLayer(text) {
+            refreshLayer.textContent = text;
+            refreshLayer.style.transform = "translateY(0)";
+        }
+
+        function hideLayer() {
+            refreshLayer.style.transform = "translateY(-100%)";
+        }
+
+        function showLoading() {
+
+            refreshLayer.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<div style="width:18px;height:18px;border:3px solid white;border-top:3px solid transparent;border-radius:50%;animation:spinRefresh 1s linear infinite;"></div>' +
+                '<span>重新整理中...</span>' +
+                '</div>';
+
+        }
+
+        // 加入 spinner 動畫 keyframes
+        const style = document.createElement("style");
+        style.innerHTML =
+            "@keyframes spinRefresh {" +
+            "0% { transform: rotate(0deg); }" +
+            "100% { transform: rotate(360deg); }" +
+            "}";
+        document.head.appendChild(style);
+
+        window.addEventListener("touchstart", function (e) {
+
+            if (window.pageYOffset <= 1) {
+
+                startY = e.touches[0].clientY;
+                isPulling = true;
+                readyToRefresh = false;
+            }
+
+        }, { passive: true });
+
+        window.addEventListener("touchmove", function (e) {
+
+            if (!isPulling) return;
+
+            const currentY = e.touches[0].clientY;
+            const distance = currentY - startY;
+
+            if (distance > 30 && !readyToRefresh) {
+                showLayer("下拉以重新整理");
+            }
+
+            if (distance > triggerDistance) {
+                showLayer("放開即可重新整理");
+                readyToRefresh = true;
+            }
+
+        }, { passive: true });
+
+        window.addEventListener("touchend", function () {
+
+            if (readyToRefresh) {
+                showLoading();
+
+                setTimeout(function () {
+                    location.reload();
+                }, 600);
+
+            } else {
+                hideLayer();
+            }
+
+            isPulling = false;
+            readyToRefresh = false;
+
+        });
+
+    })();
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9SRCt-excgmYGS-f2va3CCWoUbpvjkPs",

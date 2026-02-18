@@ -601,79 +601,62 @@
 
 })();
 
+// --- Firebase 初始化區 (修正版) ---
 const firebaseConfig = {
-  apiKey: "AIzaSyD_3QSeFtTSANj2B0JwEzXPTK-RMs0Jxfc",
-  authDomain: "system-testing-4e002.firebaseapp.com",
-  databaseURL: "https://system-testing-4e002-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "system-testing-4e002",
-  storageBucket: "system-testing-4e002.firebasestorage.app",
-  messagingSenderId: "543740657801",
-  appId: "1:543740657801:web:3a52784db15265c9e0c658"
+    apiKey: "AIzaSyD_3QSeFtTSANj2B0JwEzXPTK-RMs0Jxfc",
+    authDomain: "system-testing-4e002.firebaseapp.com",
+    databaseURL: "https://system-testing-4e002-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "system-testing-4e002",
+    storageBucket: "system-testing-4e002.firebasestorage.app",
+    messagingSenderId: "543740657801",
+    appId: "1:543740657801:web:3a52784db15265c9e0c658"
 };
 
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database(undefined, { experimentalForceLongPolling: true });
-    const dbRef = database.ref("bloodPressureRecords");
+// 1. 初始化 Firebase
+firebase.initializeApp(firebaseConfig);
 
-// 初始化 Google 認證提供者
+// 2. 初始化 Realtime Database (修正初始化方式)
+const database = firebase.database(); 
+const dbRef = database.ref("bloodPressureRecords");
 const provider = new firebase.auth.GoogleAuthProvider();
 
-// Google 登入功能 (針對 PWA 最佳化，使用 Redirect 模式避免彈出視窗被阻擋)
+// 3. Google 登入功能 (建議在 GitHub 使用 Popup 彈窗，避免跳轉遺失狀態)
 function googleLogin() {
     const authMsg = document.getElementById("authMsg");
-    authMsg.textContent = "正在跳轉至 Google 驗證...";
+    authMsg.textContent = "正在啟動 Google 驗證...";
     
-    // 增加 catch 來捕捉錯誤
-    firebase.auth().signInWithRedirect(provider).catch((error) => {
-        console.error("跳轉錯誤:", error);
-        authMsg.textContent = "跳轉失敗：" + error.message;
+    // 改用 signInWithPopup，這在 GitHub Pages 會穩定非常多
+    firebase.auth().signInWithPopup(provider).then((result) => {
+        console.log("登入成功:", result.user.email);
+    }).catch((error) => {
+        console.error("登入失敗:", error);
+        authMsg.textContent = "登入失敗：" + error.message;
     });
 }
 
-// 處理 PWA 重新導向回來的結果
-firebase.auth().getRedirectResult().then((result) => {
-    if (result && result.user) {
-        // 登入成功後的處理流程由下方 onAuthStateChanged 統一接手
-    }
-}).catch((error) => {
-    if (error.code !== "auth/no-auth-event") {
-        document.getElementById("authMsg").textContent = "登入失敗：" + error.message;
-    }
-});
-
-// 監聽登入狀態改變 (這是系統啟動的核心)
-// 強力除錯版監聽器
+// 4. 監聽登入狀態改變
 firebase.auth().onAuthStateChanged((user) => {
-    console.log("當前登入狀態檢查:", user);
+    console.log("登入狀態檢查中...", user ? "已登入: " + user.email : "未登入");
     
     if (user) {
-        // 成功登入
-        console.log("登入成功，使用者:", user.email);
+        // 隱藏登入層
         document.getElementById("authLayer").style.display = "none";
         
+        // 只有在成功登入後才執行系統載入
         try {
             initMonthFilter();
-            loadRecords(); // 這裡如果失敗，代表 Rules 還是有問題
+            loadRecords();
             loadStock();
             startAutoLogoutTimer();
+            console.log("系統已成功啟動");
         } catch (e) {
-            console.error("啟動系統時發生錯誤:", e);
-            alert("系統啟動失敗，請查看控制台");
+            console.error("系統啟動失敗:", e);
         }
     } else {
-        // 未登入或登入狀態遺失
-        console.log("目前處於未登入狀態");
+        // 未登入則顯示登入層
         document.getElementById("authLayer").style.display = "flex";
+        document.getElementById("authMsg").textContent = "請使用 Google 帳號登入以存取您的數據";
     }
-});
-
-// 額外檢查重新導向結果
-firebase.auth().getRedirectResult().then((result) => {
-    if (result.error) {
-        alert("重新導向登入失敗：" + result.error.message);
-    }
-}).catch((error) => {
-    alert("驗證流程發生衝突：" + error.message);
 });
 
 // 重寫登出功能：實現真實完整的 Google 登出

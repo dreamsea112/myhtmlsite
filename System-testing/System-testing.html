@@ -324,10 +324,12 @@
 
 <div id="authLayer">
     <div id="authBox">
-        <h3 style="margin-top:0;">系統安全驗證</h3>
-        <p style="color:#718096; font-size:14px;">請輸入存取密碼以同步健康紀錄</p>
-        <input type="password" id="authPwd" placeholder="請輸入密碼" style="margin-bottom:15px;" onkeydown="if(event.keyCode==13) verifyPassword()">
-        <button onclick="verifyPassword()" style="width:100%; background:#3182ce; color:white;">驗證並登入</button>
+        <h3 style="margin-top:0;">健康管理系統登入</h3>
+        <p style="color:#718096; font-size:14px;">請使用 Google 帳號登入以存取您的數據</p>
+        <button onclick="googleLogin()" style="width:100%; background:white; color:#444; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; gap:10px; padding:10px; font-weight:bold;">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18">
+            使用 Google 帳號登入
+        </button>
         <div id="authMsg" style="margin-top:10px; color:#e53e3e; font-size:14px;"></div>
     </div>
 </div>
@@ -421,6 +423,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <script>
     const STORAGE_KEY = "bloodPressureRecords";
@@ -612,38 +615,72 @@ const firebaseConfig = {
     const database = firebase.database(undefined, { experimentalForceLongPolling: true });
     const dbRef = database.ref("bloodPressureRecords");
 
-    function verifyPassword() {
-    // 1. 抓取 UI 上輸入框的值 (使用者輸入什麼，這變數就是什麼)
-    const pwd = document.getElementById("authPwd").value;
+// 初始化 Google 認證提供者
+const provider = new firebase.auth.GoogleAuthProvider();
+
+// Google 登入功能 (針對 PWA 最佳化，使用 Redirect 模式避免彈出視窗被阻擋)
+function googleLogin() {
     const authMsg = document.getElementById("authMsg");
+    authMsg.textContent = "正在跳轉至 Google 驗證...";
+    firebase.auth().signInWithRedirect(provider);
+}
 
-    authMsg.textContent = "驗證中...";
+// 處理 PWA 重新導向回來的結果
+firebase.auth().getRedirectResult().then((result) => {
+    if (result && result.user) {
+        // 登入成功後的處理流程由下方 onAuthStateChanged 統一接手
+    }
+}).catch((error) => {
+    if (error.code !== "auth/no-auth-event") {
+        document.getElementById("authMsg").textContent = "登入失敗：" + error.message;
+    }
+});
 
-    // 2. 呼叫 Firebase 嘗試寫入權限開關
-    // 這裡送出的 pwd 會被 Firebase Rules 的 newData.child('pwd').val() 拿去比對
-    database.ref("__auth_guard").set({ 
-        pwd: pwd,        // 傳送變數，HTML 原始碼裡沒有真實密碼字串
-        verified: true 
-    })
-    .then(() => {
-        // 如果密碼正確，Firebase Rules 允許寫入，則執行以下成功邏輯
-        localStorage.setItem("bp_auth_ok", "1");
-        // 將密碼暫存於 Session，以便登出時可發送指令關閉權限
-        localStorage.setItem("temp_pwd_session", pwd); 
+// 監聽登入狀態改變 (這是系統啟動的核心)
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        // 使用者已登入，隱藏登入層並載入數據
         document.getElementById("authLayer").style.display = "none";
-        initMonthFilter(); 
+        initMonthFilter();
         loadRecords();
         loadStock();
-        // 啟動登入後 10 分鐘強制自動登出
-        startAutoLogoutTimer();
-    })
-    .catch((error) => {
-        // 如果密碼錯誤，Firebase Rules 會回傳 Permission Denied，執行失敗邏輯
-        console.error("驗證失敗:", error);
-        authMsg.textContent = "密碼錯誤，請重新輸入";
-        // 清空輸入框方便重新輸入
-        document.getElementById("authPwd").value = "";
-    });
+        startAutoLogoutTimer(); // 啟動 10 分鐘倒數
+    } else {
+        // 未登入，顯示登入層
+        document.getElementById("authLayer").style.display = "flex";
+    }
+});
+
+// 重寫登出功能：實現真實完整的 Google 登出
+function logout() {
+    if (confirm("確定要登出系統嗎？")) {
+        // 1. 清除自動登出計時器
+        if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
+        
+        // 2. 清除本地快取資料
+        localStorage.removeItem("bloodPressureRecords");
+        
+        // 3. 執行 Firebase Auth 真實登出
+        firebase.auth().signOut().then(() => {
+            alert("已安全登出系統");
+            location.reload(); // 重新整理網頁回到登入畫面
+        }).catch((error) => {
+            console.error("登出發生錯誤:", error);
+        });
+    }
+}
+
+// 10 分鐘自動登出邏輯 (不間斷計時)
+function startAutoLogoutTimer() {
+    if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
+    // 設定 10 分鐘 (600,000 毫秒) 後執行真實登出
+    autoLogoutTimer = setTimeout(() => {
+        alert("登入逾時 (10分鐘)，系統已自動安全登出。");
+        // 直接調用上面寫好的真登出邏輯
+        firebase.auth().signOut().then(() => {
+            location.reload();
+        });
+    }, 600000);
 }
 
     window.addEventListener("load", () => {

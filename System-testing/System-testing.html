@@ -622,7 +622,12 @@ const provider = new firebase.auth.GoogleAuthProvider();
 function googleLogin() {
     const authMsg = document.getElementById("authMsg");
     authMsg.textContent = "正在跳轉至 Google 驗證...";
-    firebase.auth().signInWithRedirect(provider);
+    
+    // 增加 catch 來捕捉錯誤
+    firebase.auth().signInWithRedirect(provider).catch((error) => {
+        console.error("跳轉錯誤:", error);
+        authMsg.textContent = "跳轉失敗：" + error.message;
+    });
 }
 
 // 處理 PWA 重新導向回來的結果

@@ -615,92 +615,79 @@ const firebaseConfig = {
 // 1. 初始化 Firebase
 firebase.initializeApp(firebaseConfig);
 
-// 2. 初始化 Realtime Database (修正初始化方式)
-const database = firebase.database(); 
+// 2. 初始化 Realtime Database
+const database = firebase.database();
 const dbRef = database.ref("bloodPressureRecords");
 const provider = new firebase.auth.GoogleAuthProvider();
 
-// 3. Google 登入功能 (建議在 GitHub 使用 Popup 彈窗，避免跳轉遺失狀態)
+// 定義全域計時器變數，用於管理自動登出
+let authTimer = null;
+
+// 3. Google 登入功能 (使用 Popup 彈窗模式)
 function googleLogin() {
     const authMsg = document.getElementById("authMsg");
     authMsg.textContent = "正在啟動 Google 驗證...";
     
-    // 改用 signInWithPopup，這在 GitHub Pages 會穩定非常多
     firebase.auth().signInWithPopup(provider).then((result) => {
         console.log("登入成功:", result.user.email);
+        // 登入成功後狀態改變會由 onAuthStateChanged 自動處理
     }).catch((error) => {
         console.error("登入失敗:", error);
         authMsg.textContent = "登入失敗：" + error.message;
     });
 }
 
-// 4. 監聽登入狀態改變
-firebase.auth().onAuthStateChanged((user) => {
-    console.log("登入狀態檢查中...", user ? "已登入: " + user.email : "未登入");
-    
-    if (user) {
-        // 隱藏登入層
-        document.getElementById("authLayer").style.display = "none";
-        
-        // 只有在成功登入後才執行系統載入
-        try {
-            initMonthFilter();
-            loadRecords();
-            loadStock();
-            startAutoLogoutTimer();
-            console.log("系統已成功啟動");
-        } catch (e) {
-            console.error("系統啟動失敗:", e);
-        }
-    } else {
-        // 未登入則顯示登入層
-        document.getElementById("authLayer").style.display = "flex";
-        document.getElementById("authMsg").textContent = "請使用 Google 帳號登入以存取您的數據";
-    }
-});
-
-// 重寫登出功能：實現真實完整的 Google 登出
+// 4. 登出功能
 function logout() {
-    if (confirm("確定要登出系統嗎？")) {
-        // 1. 清除自動登出計時器
-        if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
-        
-        // 2. 清除本地快取資料
-        localStorage.removeItem("bloodPressureRecords");
-        
-        // 3. 執行 Firebase Auth 真實登出
-        firebase.auth().signOut().then(() => {
-            alert("已安全登出系統");
-            location.reload(); // 重新整理網頁回到登入畫面
-        }).catch((error) => {
-            console.error("登出發生錯誤:", error);
-        });
-    }
+    firebase.auth().signOut().then(() => {
+        alert("您已安全登出");
+        // 清除計時器
+        if (authTimer) clearTimeout(authTimer);
+        // 重新整理頁面以清除所有畫面數據與狀態，確保安全性
+        window.location.reload();
+    }).catch((error) => {
+        console.error("登出錯誤", error);
+        alert("登出失敗：" + error.message);
+    });
 }
 
-// 10 分鐘自動登出邏輯 (不間斷計時)
+// 5. 啟動 10 分鐘自動登出計時器
 function startAutoLogoutTimer() {
-    if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
-    // 設定 10 分鐘 (600,000 毫秒) 後執行真實登出
-    autoLogoutTimer = setTimeout(() => {
-        alert("登入逾時 (10分鐘)，系統已自動安全登出。");
-        // 直接調用上面寫好的真登出邏輯
-        firebase.auth().signOut().then(() => {
-            location.reload();
-        });
+    // 先清除可能存在的舊計時器
+    if (authTimer) clearTimeout(authTimer);
+
+    // 設定 10 分鐘 (600000 毫秒) 後執行登出
+    authTimer = setTimeout(() => {
+        alert("為確保資料安全，系統已閒置超過 10 分鐘，將自動登出。");
+        logout();
     }, 600000);
 }
 
-    window.addEventListener("load", () => {
-    if (localStorage.getItem("bp_auth_ok") === "1") {
+// 6. 監聽登入狀態改變
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        // 已登入：隱藏登入層
         document.getElementById("authLayer").style.display = "none";
-
-        initMonthFilter();
-        loadRecords();
-        loadStock();
-
-        // 關鍵：重新整理後仍會啟動自動登出計時
-        startAutoLogoutTimer();
+        
+        try {
+            // 載入系統數據
+            initMonthFilter();
+            loadRecords();
+            loadStock();
+            // 啟動自動登出倒數
+            startAutoLogoutTimer();
+            console.log("系統已啟動，使用者：" + user.email);
+        } catch (e) {
+            console.error("系統啟動錯誤:", e);
+            alert("系統啟動部分功能異常，請查看控制台");
+        }
+    } else {
+        // 未登入：顯示登入層
+        document.getElementById("authLayer").style.display = "flex";
+        // 確保登入訊息重設
+        document.getElementById("authMsg").textContent = "請使用 Google 帳號登入以存取您的數據";
+        // 清除計時器
+        if (authTimer) clearTimeout(authTimer);
     }
 });
 

@@ -642,24 +642,38 @@ firebase.auth().getRedirectResult().then((result) => {
 });
 
 // 監聽登入狀態改變 (這是系統啟動的核心)
-// 監聽登入狀態改變 (增加 Alert 方便您在手機上查錯)
+// 強力除錯版監聽器
 firebase.auth().onAuthStateChanged((user) => {
+    console.log("當前登入狀態檢查:", user);
+    
     if (user) {
-        // alert("Google 驗證成功：" + user.email); // 若成功跳轉，這行會跳出來
+        // 成功登入
+        console.log("登入成功，使用者:", user.email);
         document.getElementById("authLayer").style.display = "none";
         
         try {
             initMonthFilter();
-            loadRecords();
+            loadRecords(); // 這裡如果失敗，代表 Rules 還是有問題
             loadStock();
             startAutoLogoutTimer();
         } catch (e) {
-            alert("載入資料發生錯誤: " + e.message);
+            console.error("啟動系統時發生錯誤:", e);
+            alert("系統啟動失敗，請查看控制台");
         }
     } else {
-        // 如果一直回到這哩，代表 Firebase 認不出你是誰
+        // 未登入或登入狀態遺失
+        console.log("目前處於未登入狀態");
         document.getElementById("authLayer").style.display = "flex";
     }
+});
+
+// 額外檢查重新導向結果
+firebase.auth().getRedirectResult().then((result) => {
+    if (result.error) {
+        alert("重新導向登入失敗：" + result.error.message);
+    }
+}).catch((error) => {
+    alert("驗證流程發生衝突：" + error.message);
 });
 
 // 重寫登出功能：實現真實完整的 Google 登出

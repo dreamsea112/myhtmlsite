@@ -1292,56 +1292,6 @@ firebase.auth().onAuthStateChanged((user) => {
         alert("已完成722平均值計算並自動新增：\n平均收縮壓：" + avgSys + "\n平均舒張壓：" + avgDia + "\n平均心跳：" + avgHr);
     }
 
-// 登入後啟動 10 分鐘強制自動登出機制 (各裝置獨立計算)
-function startAutoLogoutTimer() {
-    // 預防機制：若已有計時器存在，先清除以避免產生多重計時 Bug
-    if (autoLogoutTimer !== null) {
-        clearTimeout(autoLogoutTimer);
-        autoLogoutTimer = null;
-    }
-
-    // 設定 10 分鐘 (600,000 毫秒) 後觸發
-    autoLogoutTimer = setTimeout(function() {
-        // 安全檢查：確認目前仍處於登入狀態才執行
-        if (localStorage.getItem("bp_auth_ok") === "1") {
-            alert("系統已登入超過 10 分鐘，為了安全起見將自動登出。");
-            // 執行既有的登出邏輯，包含清除 Firebase 雲端權限
-            logout(true);  
-        }
-    }, 600000);
-}
-
-function logout(isAuto = false) {
-    // 若為手動登出，才詢問使用者確認
-    if (!isAuto) {
-        if (!confirm("確定要登出並關閉存取權限嗎？")) return;
-    }
-
-    // 從 localStorage 暫存中取得原本登入時用的密碼
-    const currentPwd = localStorage.getItem("temp_pwd_session"); 
-
-    database.ref("__auth_guard").set({
-        pwd: currentPwd || "", // 發送原本的密碼來獲得權限，並將 verified 變更為 false
-        verified: false
-    }).then(() => {
-        // 清除本地所有登入標記與暫存密碼
-        localStorage.removeItem("bp_auth_ok");
-        localStorage.removeItem("temp_pwd_session"); 
-
-        // 僅在手動登出時顯示提示
-        if (!isAuto) {
-            alert("已安全登出");
-        }
-
-        location.reload(); // 重新整理網頁回到驗證畫面
-    }).catch((error) => {
-        // 若權限不足或網路問題，仍清除本地標記並強制重整
-        console.error("登出程序異常:", error);
-        localStorage.removeItem("bp_auth_ok");
-        localStorage.removeItem("temp_pwd_session");
-        location.reload();
-    });
-}
 
     function downloadCSV() {
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];

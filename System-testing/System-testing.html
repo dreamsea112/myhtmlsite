@@ -642,16 +642,22 @@ firebase.auth().getRedirectResult().then((result) => {
 });
 
 // 監聽登入狀態改變 (這是系統啟動的核心)
+// 監聽登入狀態改變 (增加 Alert 方便您在手機上查錯)
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
-        // 使用者已登入，隱藏登入層並載入數據
+        // alert("Google 驗證成功：" + user.email); // 若成功跳轉，這行會跳出來
         document.getElementById("authLayer").style.display = "none";
-        initMonthFilter();
-        loadRecords();
-        loadStock();
-        startAutoLogoutTimer(); // 啟動 10 分鐘倒數
+        
+        try {
+            initMonthFilter();
+            loadRecords();
+            loadStock();
+            startAutoLogoutTimer();
+        } catch (e) {
+            alert("載入資料發生錯誤: " + e.message);
+        }
     } else {
-        // 未登入，顯示登入層
+        // 如果一直回到這哩，代表 Firebase 認不出你是誰
         document.getElementById("authLayer").style.display = "flex";
     }
 });
